@@ -34,6 +34,10 @@ sign-in rules allow it on the PMO's laptop day after day. Slice 1 tests exactly 
 
 ## Alternatives considered
 - Playwright per sync (first attempt): failed as above.
+- Use the PMO's existing everyday Edge session (her normal profile): no second sign-in, but the app would attach to
+  the browser she is working in. Attaching needs her Edge restarted with a debugging port, a hang could only be ended
+  by closing her own browser and tabs, and her profile is locked while she uses it. Rejected: the app must own the
+  Edge it can kill.
 - Copy cookies from Edge into Python requests: breaks Assumption 1 (a live credential in our process and on disk).
 - WebView2 (inside pywebview) for sign-in and reading: one engine less, but untested with Accenture conditional access
   and MFA. Kept as an idea if Edge is blocked.
@@ -46,3 +50,5 @@ sign-in rules allow it on the PMO's laptop day after day. Slice 1 tests exactly 
   it. Accepted: such a program can already read her browser data.
 - Hard to reverse: the connector interface (`sign_in`, `list_files`, `download`, `renew`) keeps the rest of the app
   independent of this choice.
+- Her everyday Edge profile (`%LOCALAPPDATA%\Microsoft\Edge\User Data`) is never opened, read or changed by the app.
+  Both that profile and the app's own `edge_profile` are on Claude Code's deny list in `.claude/settings.json`.

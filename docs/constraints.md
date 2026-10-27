@@ -51,8 +51,9 @@ Exact versions of every package (including sub-dependencies) go in a lock file. 
 | Package | Pin |
 |---|---|
 | pytest | 9.1.1 |
+| ruff | 0.17.2 |
 
-Others (a linter) are chosen in Phase 4.
+ruff is the formatter and linter, chosen in Phase 4 (latest on PyPI 2026-10-26).
 
 ## Not allowed
 

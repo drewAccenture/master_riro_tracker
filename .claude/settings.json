@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(~/AppData/Local/RIROTracker/edge_profile/**)",
+      "Read(~/AppData/Local/Microsoft/Edge/User Data/**)",
+      "Edit(./reference/**)",
+      "Write(./reference/**)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git reset --hard*)",
+      "PowerShell(Remove-Item * -Recurse*)",
+      "PowerShell(git push --force*)",
+      "PowerShell(git push -f*)",
+      "PowerShell(git reset --hard*)"
+    ]
+  }
+}
