@@ -97,11 +97,14 @@ ui  ->  services  ->  core
                   ->  connectors  (own error types only)
 ```
 
-- `ui` calls `services` only.
-- `services` may call `core`, `store` and `connectors`.
-- `core` imports nothing from the app except `core.models`.
-- `connectors` import nothing from the app. They return plain data (file id, name, ETag, modified, size, bytes).
-- `store` imports only `core.models`.
+- Imports inside the same layer are allowed.
+- `ui` imports `ui` and `services` only.
+- `services` may import `services`, `core`, `store` and `connectors`.
+- `core` imports `core` only.
+- `store` imports `store` and `core.models` only.
+- `connectors` import `connectors` only. They return plain data (file id, name, ETag, modified, size, bytes).
+- `__main__.py` is the composition root: it may import any layer and holds wiring only, with no side effects at
+  import time. Nothing imports `riro.__main__`.
 - Nothing calls upward. Services see the connector through a small interface (`list_files()`, `download(id)`), so
   tests use a fake, and local import (US-13) feeds the same reading path.
 - Status rules exist only in `core/status.py`. The page never recomputes them.
@@ -109,7 +112,8 @@ ui  ->  services  ->  core
 ## 6. The SharePoint connector (ADR-002, ADR-003)
 
 1. **Edge is owned by the app.** `edge.py` starts `msedge.exe` with `--user-data-dir=%LOCALAPPDATA%\RIROTracker\edge_profile`
-   and `--remote-debugging-port=0`. Python keeps the process handle and puts the process in a Windows Job Object.
+   and `--remote-debugging-port=<port>`, a free port the app picks and then finds through `/json/version` (ADR-009).
+   Python keeps the process handle and puts the process in a Windows Job Object.
    Killing the job ends Edge and all its child processes at once. If the app exits or crashes, Windows ends the job.
 2. **Sign-in (US-01).** Edge starts visible on the folder page. The PMO signs in (SSO, MFA). When the page URL is on
    the site and not a sign-in page, the app kills the visible Edge and starts a headless one on the same profile.

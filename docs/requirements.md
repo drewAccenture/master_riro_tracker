@@ -1,6 +1,6 @@
 # Master RIRO Checklist Tracker: Requirements (version 1)
 
-Status: Draft, waiting for approval
+Status: Approved 2026-10-27
 Date: 2026-10-26
 
 ## 1. Problem statement
