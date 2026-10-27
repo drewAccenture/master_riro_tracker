@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = ["live: talks to real Edge and SharePoint. Needs -m live and RIRO_LIVE=1."]
+addopts = '--strict-markers -m "not live"'

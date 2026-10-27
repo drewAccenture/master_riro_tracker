@@ -1,6 +1,6 @@
 # Plan: Slice 1, the sign-in test and package
 
-Status: Draft, notes addressed, waiting for approval
+Status: Approved 2026-10-27
 Date: 2026-10-27
 Source: `docs/architecture.md` section 10 (first vertical slice) and section 11 phase 1. ADR-001, 002, 003, 006, 007,
 009.
@@ -190,7 +190,8 @@ not need them.
 ## 6. Acceptance criteria covered (from `docs/requirements.md`)
 
 - US-01: "Not connected" plus Connect button with the folder filled in; Edge opens, window closes by itself once the
-  folder is reached, "Connected", first sync starts; closed or 3 minutes: "did not finish", nothing else changes.
+  folder is reached, first sync starts, "Connected" once a sync has worked; closed or 3 minutes: "did not finish",
+  nothing else changes.
 - US-07: Sync now starts at once or shows "Syncing..."; plain-word failure messages; never hangs; on time-out Edge is
   closed and the next sync starts clean. ("Last successful sync" needs the store: in memory only for this slice.)
 - US-15: installs by double-click, no admin rights, no Python install, opens the app.
@@ -240,3 +241,76 @@ Defaults taken where the notes said nothing (change any with a note):
 3. Slice 1 keeps nothing on disk, "connected" = a sync on start works (was open question 4).
 4. Lock file = `requirements.txt` with exact runtime pins; dev pins stay in constraints.md for now (was open
    question 5).
+
+## 11. Changes during build (2026-10-27)
+
+Approved by the maintainer on 2026-10-27.
+
+Files not in section 4:
+
+| File | Why |
+|---|---|
+| `src/riro/connectors/sharepoint/urls.py` | Split from `client.py` (300-line rule): allowed addresses, GET-only fetch with an in-page readiness check |
+| `src/riro/connectors/sharepoint/edge_process.py` | Split from `edge.py`: find `msedge.exe`, Job Object, kill |
+| `src/riro/connectors/sharepoint/session.py` | Split from `client.py`: the one headless Edge session, shared safely between threads |
+| `docs/architecture.md` section 4 | Folder tree lists the three files above |
+| `.gitignore` | `build/` and `dist/`, so the package zip is never committed |
+| `tests/conftest.py` | Synthetic `.xlsx` built in code with openpyxl and invented names, instead of a file in `tests/fixtures/` |
+| `tests/connector/sharepoint_fakes.py` | Shared fake Edge, page and clock for the client tests; also the DevTools port fakes and the `servers` / `hanging_port` fixtures, so no test file imports another |
+| `tests/connector/conftest.py` | Makes the two shared fixtures from `sharepoint_fakes.py` visible to pytest |
+| `docs/workflows.md` US-01 | User flow: "Connected" once a sync has worked; data flow step 3: polite close, then kill (ADR-010) |
+| `docs/architecture.md` section 6.2 | Sign-in: polite close of at most 5 s, then kill (ADR-010); a sign-in that does not finish kills at once |
+| `CLAUDE.md` | Fixtures line (decision 1); "Run app" line removed (plan 7.3: `python -m riro` fails, `pyproject.toml` fixes the path for pytest only); new workflow rule: never start a real `msedge.exe` without asking, experiments use a throwaway profile under the scratchpad |
+
+Also added: 11 test files beyond the list in 3.4 (path traversal, the bridge, and the fixes from two reviews),
+`docs/adr/ADR-010-polite-close.md`, and `tests/connector/test_graceful_close.py`.
+
+Decisions:
+1. Tests use synthetic data built in code or in `tests/fixtures/` (CLAUDE.md updated).
+2. ADR-010: Edge is closed politely for at most 5 s after a finished sign-in and at app exit, then killed by its
+   handle (refines ADR-002). Measured: a kill at once loses a fresh cookie 6 of 6 times; a polite close keeps it.
+3. US-01: "SharePoint: Connected" shows once a sync has worked (requirements.md and section 6 updated).
+4. Start-up: the app syncs on start only if the `edge_profile` folder exists. Only the folder's existence is
+   checked; nothing inside it is opened, listed or checked (tested).
+5. `check_url` also refuses `..` and encoded dots or slashes (decided when the failing tests were shown).
+6. Edge starts on `about:blank`; its own tab then loads the URL and must finish loading before it is used. Before
+   each request, the page checks that it is a loaded site page, or sends nothing. Both were checked against real
+   Edge on 2026-10-27.
+7. `EdgeNotStarted` (still the `TimedOut` kind) has its own message, "Microsoft Edge could not be started". An
+   unexpected error gives a plain-word message, and the report records its class name only.
+8. The time-out message says "Click Sync now to try again." while there is no timer. It goes back to the US-07
+   wording ("The app will try again in 5 minutes.") when the US-06 timer is built.
+9. Before a sign-in, the running headless Edge is killed at once, not closed politely (ADR-010 stays as written).
+10. Connect turns any error into the plain-word "Something went wrong" message; the report gets the class name only.
+11. A polite close at app exit, or after a finished sign-in, that times out or fails is recorded as
+    `edge_close result=failed note=polite close did not finish` (fixed wording, no personal data).
+12. ADR-011: `tools\check.ps1` runs all of `tests\`; tests marked `live` need `-m live` and `RIRO_LIVE=1` (guard
+    `LIVE` in `sharepoint_fakes.py`, `live_profile` fixture in `tests/connector/conftest.py`). No live test yet.
+13. ADR-012: pywebview serves `ui/web` from 127.0.0.1 on a random port (checked by one approved run of the app
+    window, 2026-10-27); `POST /js_api` does not reach the bridge, so no Phase 8 item for it.
+14. The fetch-answer helpers moved from `client.py` to `urls.py` to keep `client.py` under 300 lines.
+15. CLAUDE.md: the 300-line rule applies to source and test files; this plan is not split. New workflow rules:
+    decide small things and list them; ask only for the listed items; recommendation and "ok" default when asking;
+    end-of-task report under 25 lines; run the code-reviewer after a build and fix Critical and High test first.
+16. At app exit Edge is closed before the log (`finish()` in `__main__.py`), so the exit event reaches `logs\`.
+    A failed Connect shows its own message on the page; the "Something went wrong" text no longer says "sync".
+- Known gap (final review): after the watchdog fires, a polling loop in `renew()` or `_fetch_when_ready()` can start
+  a new headless Edge past the 180 s limit (wider than the health-ping gap above); needs a download starting late.
+
+Still open:
+- Connect says "The sign-in did not finish" when Edge is missing (interface choice 3).
+- Whether SharePoint answers an expired sign-in with 403 or 401 (Day 2 report).
+- Phase 8: hash-check the PyPI packages in `tools\build_package.ps1` (`--hash` lines in `requirements.txt` and
+  `--require-hashes`). Today the packages are pinned by version only; the Python download is SHA-256 checked.
+
+Known gaps, recorded on 2026-10-27, no code yet (code review of the slice 1 diff):
+- Edge-start race 1: an `abort()` that arrives just before `EdgeStarter.__call__` resets its flag is lost, so a full
+  Edge start (up to 60 s) runs anyway. The session slot's epoch check then kills the result: wasted time, no leak.
+- Edge-start race 2: `sign_in` does not check "the app is closing" before it starts the visible Edge. A shutdown that
+  races a Connect can briefly open a visible Edge after the app window closed; the first poll kills it.
+- The health-ping retry in `services/sync.py` does not check whether the watchdog already fired. With today's limits
+  the ping stage ends by about 130 s, inside the 180 s limit; tuned limits could start a second Edge past it.
+- The "SharePoint sign-in folder" rule exists twice in `connectors/sharepoint/urls.py`: a regex in the fetch JS and a
+  Python list. They differ for a path that ends in `/_layouts` (no trailing slash).
+- `ui/bridge.py` decides `sign_in_expired` by comparing message text; a wording change would break it. The sync
+  service could expose it, as it does `is_connected()`.

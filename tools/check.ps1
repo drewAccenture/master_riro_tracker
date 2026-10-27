@@ -1,4 +1,4 @@
-# Local checks: format, lint, unit tests. Replaces the Claude Code hooks that org policy blocks (ADR-008).
+# Local checks: format, lint, all tests except live ones (ADR-008, ADR-011).
 # Usage: powershell -File tools\check.ps1
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -49,6 +49,6 @@ function Invoke-Step {
 
 Invoke-Step -Name 'ruff format' -StepArgs @('-m', 'ruff', 'format', 'src', 'tests') -OkCodes @(0) -TimeoutSec 60
 Invoke-Step -Name 'ruff check' -StepArgs @('-m', 'ruff', 'check', 'src', 'tests') -OkCodes @(0) -TimeoutSec 60
-Invoke-Step -Name 'pytest unit' -StepArgs @('-m', 'pytest', 'tests\unit', '-q') -OkCodes @(0, 5) -TimeoutSec 120  # 5 = no tests collected
+Invoke-Step -Name 'pytest (all tests, live skipped)' -StepArgs @('-m', 'pytest', 'tests', '-q') -OkCodes @(0, 5) -TimeoutSec 120  # 5 = no tests collected
 Write-Host 'ALL CHECKS PASSED'
 exit 0

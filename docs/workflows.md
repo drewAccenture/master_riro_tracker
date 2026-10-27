@@ -6,14 +6,16 @@ Layers: UI, bridge, services, core, connector, store. See `docs/architecture.md`
 ## US-01 Connect to SharePoint
 
 User flow: opens the app, sees "SharePoint: Not connected", clicks "Connect to SharePoint", signs in in the Edge
-window, the window closes, the box says "Connected" and a first sync starts.
+window, the window closes and a first sync starts. The box says "Connected" once a sync has worked; if that first
+sync fails, it says in plain words what went wrong (US-07).
 
 Data flow:
 1. UI -> bridge `connect()` -> `services/sync.connect()`.
 2. Connector `sign_in()`: starts visible Edge on the app profile, opens the folder page, waits up to 3 minutes for a
    URL on the site that is not a sign-in page.
-3. Success: kill visible Edge, start headless Edge. Store saves `connected = true`. Sync starts (US-06 flow).
-4. Window closed or 3 minutes passed: connector raises `NeedsSignIn` with the reason. Store unchanged. UI shows "The
+3. Success: close the visible Edge politely (at most 5 s, so it saves the sign-in), then kill it by its handle
+   (ADR-010). Start headless Edge. Store saves `connected = true`. Sync starts (US-06 flow).
+4. Window closed or 3 minutes passed: connector raises `Unreachable` or `TimedOut`. Store unchanged. UI shows "The
    sign-in did not finish".
 5. Disconnect: connector kills Edge and deletes `edge_profile\`. Store sets `connected = false`. Roll-on dates and data
    stay.

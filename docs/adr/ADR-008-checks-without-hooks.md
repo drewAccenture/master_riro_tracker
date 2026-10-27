@@ -1,6 +1,6 @@
 # ADR-008: Checks = a local script instead of Claude Code hooks
 
-Status: Accepted
+Status: Accepted. Refined by ADR-011.
 Date: 2026-10-27
 
 ## Context
