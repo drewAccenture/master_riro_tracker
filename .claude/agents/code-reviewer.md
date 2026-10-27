@@ -28,6 +28,8 @@ If the caller gave no list of changed files, ask for it. Do not guess.
    - SharePoint GET only. No reading, copying or logging of cookies, tokens or the Edge profile.
    - No new package without an approved ADR. No imports from reference/.
    - Files over about 300 lines get split.
+   - Every Edge or network call has a time limit. Nothing waits on a lock with no limit (ADR-003).
+   - No joiner names, enterprise ids or URLs with query strings in logs, diagnostics, tests or git (ADR-007).
 5. Tests: use synthetic fixtures from tests/fixtures/ only. No test edited just to make it pass.
 6. ADRs: no change that contradicts an accepted ADR without a new ADR.
 
