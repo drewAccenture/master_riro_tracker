@@ -39,6 +39,20 @@ h2 {
   margin-top: 0;
 }
 
+.connection::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #8a8a8a;
+}
+
+.connection.is-connected::before {
+  background: #1b7f3b;
+}
+
 .folder,
 .details {
   color: #5c5c5c;

@@ -6,6 +6,7 @@ let busy = false;
 
 function show(state) {
   $("connection").textContent = state.connected ? "SharePoint: Connected" : "SharePoint: Not connected";
+  $("connection").classList.toggle("is-connected", state.connected);
   $("folder").textContent = state.folder;
   $("message").textContent = state.running ? "Syncing..." : state.message;
   $("last-success").textContent = state.last_success;
@@ -19,10 +20,13 @@ function show(state) {
   $("details").textContent = details.join(" · ");
   $("sync").textContent = state.running ? "Syncing..." : "Sync now";
   $("sync").disabled = state.running || busy;
-  $("connect").disabled = state.running || busy;
+  // Connected: nothing to click. A later failed sign-in makes connected false, so the button comes back by itself.
+  $("connect").disabled = state.running || busy || state.connected;
   // US-07: the expired-sign-in message says "Click Sign in again", so the button says it too.
   if (!busy) {
-    $("connect").textContent = state.sign_in_expired ? "Sign in again" : "Connect to SharePoint";
+    $("connect").textContent = state.connected
+      ? "Connected"
+      : state.sign_in_expired ? "Sign in again" : "Connect to SharePoint";
   }
 }
 

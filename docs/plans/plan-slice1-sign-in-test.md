@@ -294,6 +294,11 @@ Decisions:
     end-of-task report under 25 lines; run the code-reviewer after a build and fix Critical and High test first.
 16. At app exit Edge is closed before the log (`finish()` in `__main__.py`), so the exit event reaches `logs\`.
     A failed Connect shows its own message on the page; the "Something went wrong" text no longer says "sync".
+17. 2026-10-28: section 7 step 2 is dropped for this slice. The PMO's first install is a working version (the first
+    slice that is useful to her), and its Day 1 and Day 2 reports are part of that slice's end-to-end check. Until
+    then, whether her laptop's policy allows an app-launched or headless Edge stays open (section 9).
+18. 2026-10-28: US-01: while connected, the Connect button shows "Connected" and cannot be clicked; a dot before
+    the connection line is green when connected, grey otherwise (`app.js`, `styles.css`, requirements.md).
 - Known gap (final review): after the watchdog fires, a polling loop in `renew()` or `_fetch_when_ready()` can start
   a new headless Edge past the 180 s limit (wider than the health-ping gap above); needs a download starting late.
 
