@@ -18,7 +18,7 @@ REQUIRED_HEADERS = (
     "Completion Date",
     "Deadline",
 )
-OPTIONAL_HEADERS = ("Assigned Enterprise Id", "Remarks (Tracker)")
+OPTIONAL_HEADERS = ("Assigned Enterprise Id", "Remarks (Tracker)", "Guidelines")
 _CANONICAL = {name.lower(): name for name in REQUIRED_HEADERS + OPTIONAL_HEADERS}
 STATUSES = ("Not Started", "In Progress", "Completed", "Not Applicable")
 _STATUS_BY_LOWER = {status.lower(): status for status in STATUSES}
@@ -160,6 +160,7 @@ def read(data: bytes) -> Checklist:
                 completion_date=completion_date,
                 assigned_id=_text(cell.get("Assigned Enterprise Id")),
                 remarks=_text(cell.get("Remarks (Tracker)")),
+                guidelines=_text(cell.get("Guidelines")),
                 note=note,
             )
         )

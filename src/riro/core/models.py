@@ -31,6 +31,7 @@ class Task:
     assigned_id: str = ""
     remarks: str = ""
     note: str = ""  # "" or "completion date unclear"
+    guidelines: str = ""  # optional "Guidelines" column
 
 
 @dataclass(frozen=True)

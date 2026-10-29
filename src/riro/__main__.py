@@ -13,6 +13,7 @@ from riro.connectors.sharepoint.edge import make_start_edge
 from riro.services.autosync import AutoSync
 from riro.services.diagnostics import Diagnostics
 from riro.services.joiners import JoinerService
+from riro.services.screens import Screens
 from riro.services.sync import SyncService
 from riro.store.datafile import DataFile
 from riro.store.repo import Repo, check_layout
@@ -59,12 +60,14 @@ def main() -> None:
     repo = Repo(DataFile(root / "data" / "tracker.json", validate=check_layout))
     service = SyncService(connector, diagnostics, repo=repo)
     autosync = AutoSync(service)
+    joiners = JoinerService(repo)
     bridge = Bridge(
         service,
         diagnostics,
         autosync,
         data_note=repo.load_note,
-        joiners=JoinerService(repo),
+        joiners=joiners,
+        screens=Screens(joiners),
     )
     window = webview.create_window(
         "Master RIRO Tracker",

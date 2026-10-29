@@ -21,6 +21,7 @@ def task_out(task: Task) -> dict:
         "assigned_id": task.assigned_id,
         "remarks": task.remarks,
         "note": task.note,
+        "guidelines": task.guidelines,
     }
 
 
