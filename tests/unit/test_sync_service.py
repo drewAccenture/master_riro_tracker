@@ -113,7 +113,7 @@ def test_us07_initial_last_result_is_not_connected(checklist_bytes):
     assert connector.calls == []
 
 
-def test_us07_sync_ok_reads_first_xlsx_and_sets_last_success(checklist_bytes):
+def test_us07_sync_ok_reads_every_xlsx_and_sets_last_success(checklist_bytes):
     service, connector, diagnostics = make_service(checklist_bytes)
     result = service.sync()
     assert isinstance(result, SyncResult)
@@ -128,6 +128,8 @@ def test_us07_sync_ok_reads_first_xlsx_and_sets_last_success(checklist_bytes):
         "list_files",
         "download",
         ("download_id", "2"),
+        "download",
+        ("download_id", "3"),
     ]
     assert service.last_result() == result
     assert len(diagnostics.file_reports) == 1
@@ -135,10 +137,16 @@ def test_us07_sync_ok_reads_first_xlsx_and_sets_last_success(checklist_bytes):
     assert diagnostics.file_reports[0][2] == result.report
 
 
-@pytest.mark.parametrize(
-    "kind", ["NoAccess", "NotFound", "Unreachable", "TimedOut", "EdgeMissing"]
-)
-@pytest.mark.parametrize("step", ["health_ping", "list_files", "download"])
+# A per-file NoAccess/NotFound on download skips only that file (US-09); see test_sync_store.py.
+CONNECTOR_FAILURES = [
+    (step, kind)
+    for step in ("health_ping", "list_files", "download")
+    for kind in ("NoAccess", "NotFound", "Unreachable", "TimedOut", "EdgeMissing")
+    if not (step == "download" and kind in ("NoAccess", "NotFound"))
+]
+
+
+@pytest.mark.parametrize(("step", "kind"), CONNECTOR_FAILURES)
 def test_us07_connector_error_gives_failed_with_plain_message(
     checklist_bytes, step, kind
 ):

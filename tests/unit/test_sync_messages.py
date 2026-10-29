@@ -10,7 +10,7 @@ MESSAGES = {
     "NoAccess": "You do not have access to the folder. Ask the folder owner for read access.",
     "NotFound": "The folder was not found. It may have been moved or renamed.",
     "Unreachable": "SharePoint could not be reached. Check your network or VPN.",
-    "TimedOut": "SharePoint did not answer in time. Click Sync now to try again.",
+    "TimedOut": "SharePoint did not answer in time. The app will try again in 5 minutes.",
     "EdgeMissing": "Microsoft Edge was not found. Install Microsoft Edge and try again.",
 }
 

@@ -10,8 +10,11 @@ import webview
 
 from riro.connectors.sharepoint.client import Limits, SharePointClient
 from riro.connectors.sharepoint.edge import make_start_edge
+from riro.services.autosync import AutoSync
 from riro.services.diagnostics import Diagnostics
 from riro.services.sync import SyncService
+from riro.store.datafile import DataFile
+from riro.store.repo import Repo, check_layout
 from riro.ui.bridge import Bridge
 
 APP_VERSION = "0.1.0"
@@ -52,11 +55,13 @@ def main() -> None:
         on_version=lambda product: diagnostics.set_version("edge", product),
     )
     connector = SharePointClient(start_edge, limits=limits, on_event=diagnostics.event)
-    service = SyncService(connector, diagnostics)
+    repo = Repo(DataFile(root / "data" / "tracker.json", validate=check_layout))
+    service = SyncService(connector, diagnostics, repo=repo)
+    autosync = AutoSync(service)
     window = webview.create_window(
         "Master RIRO Tracker",
         url=str(WEB),
-        js_api=Bridge(service, diagnostics),
+        js_api=Bridge(service, diagnostics, autosync, data_note=repo.load_note),
         width=900,
         height=640,
     )
@@ -72,18 +77,21 @@ def main() -> None:
     def sync_on_start() -> None:
         # "Connected" is decided by this sync (NeedsSignIn = not connected). Before the first Connect there is
         # no profile folder, so there is nothing to try. Only the folder's existence is checked, nothing inside.
-        if signed_in_before(profile):
-            service.sync()
+        # US-06: then every 5 minutes, unless the sign-in expired (US-08: Connect starts it again).
+        if signed_in_before(profile) and service.sync().state != "not_connected":
+            autosync.start()
 
     window.events.loaded += on_loaded
     webview.start(
         sync_on_start
     )  # pywebview runs it on its own thread; returns once the window is closed
-    finish(service, diagnostics)
+    finish(service, diagnostics, autosync)
 
 
-def finish(service, diagnostics) -> None:
-    """App exit: close Edge first (up to 5 s, ADR-010), then the log, so the exit event still reaches logs\\."""
+def finish(service, diagnostics, autosync=None) -> None:
+    """App exit: stop auto-sync, close Edge (up to 5 s, ADR-010), then the log, so the exit event reaches logs\\."""
+    if autosync is not None:
+        autosync.stop()
     service.shutdown()
     diagnostics.close()
 

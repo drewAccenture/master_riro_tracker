@@ -18,6 +18,12 @@ def _plain(result: SyncResult) -> dict:
         "state": result.state,
         "message": result.message,
         "files_listed": result.files_listed,
+        "files_read": result.files_read,
+        "updated": result.updated,
+        "unchanged": result.unchanged,
+        "skipped": [
+            {"name": name, "reason": reason} for name, reason in result.skipped
+        ],
         "report": report,
         "last_success": (
             result.last_success.strftime("%d %b %Y %H:%M")
@@ -28,9 +34,13 @@ def _plain(result: SyncResult) -> dict:
 
 
 class Bridge:
-    def __init__(self, sync, diagnostics):
+    def __init__(self, sync, diagnostics, autosync=None, data_note=None):
         self._sync = sync
         self._diagnostics = diagnostics
+        self._autosync = autosync
+        self._data_note = (
+            data_note  # ADR-004: "restored from the backup copy" and the like
+        )
 
     def last_result(self) -> dict:
         last = self._sync.last_result()
@@ -39,13 +49,28 @@ class Bridge:
         state["sign_in_expired"] = last.message == MESSAGES["NeedsSignIn"]
         state["running"] = self._sync.is_running()
         state["folder"] = FOLDER_LABEL
+        state["data_note"] = self._data_note
         return state
 
     def connect(self) -> dict:
-        return _plain(self._sync.connect())
+        result = self._sync.connect()
+        # US-06, US-08: a sign-in that finished turns auto-sync on again, even if its first sync failed.
+        finished = result.state not in (
+            "sign_in_not_finished",
+            "not_connected",
+            "syncing",
+        )
+        if finished and self._autosync is not None:
+            self._autosync.start()
+        return _plain(result)
 
     def sync_now(self) -> dict:
-        return _plain(self._sync.sync())
+        result = self._sync.sync()
+        # A Sync now that got through after an expiry brings a stopped auto-sync back.
+        got_through = result.state not in ("not_connected", "syncing")
+        if got_through and self._autosync is not None and not self._autosync.running():
+            self._autosync.start()
+        return _plain(result)
 
     def copy_report(self) -> dict:
         return {"text": self._diagnostics.report()}

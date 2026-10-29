@@ -254,6 +254,13 @@ Kept from the original HTML, but not built in version 1.
 
 1. Can you share one or two real checklist files (with names removed) so the reading rules and the bug cause can be
    checked against them? Real files will never go into git.
+
+   Partly answered on 2026-10-29: one real file (October template) was read locally with the slice 2 code, counts
+   only, nothing copied. Sheet "ROLL-IN CHECKLIST" (a second sheet "Sheet1" exists) was chosen, all required headers
+   were found, 95 tasks were read and none skipped (not 96, which fits the US-05 bug cause). Statuses: only Completed,
+   In Progress and Not Applicable. Extra columns the app ignores: Guidelines, Proof of Completion, Column1, Column2.
+   There is no "Remarks (Tracker)" column. Completion Date was empty on all 95 rows (see question 6). openpyxl warns
+   "Data Validation extension is not supported" when opening the template; harmless for reading.
 2. What are all the Deadline texts used in the current template? (Needed for US-04.)
 
    Checked on 2026-10-26 in `reference/first_attempt/src/riro/core/template.json` (96 tasks) and
@@ -278,8 +285,14 @@ Kept from the original HTML, but not built in version 1.
    | (empty) | synthetic only (1) | | no, "deadline unclear" |
    | Never | synthetic only (1) | | no, "deadline unclear" |
 
-   Still open: the Deadline texts in the current (October) template. One real file answers this.
+   Checked on 2026-10-29 in one real October-template file: 9 of the texts above are used (1, 2, 3, 5, 10, 15, 30
+   days After Roll On; 10 days Before Roll On; On Roll On) and every row is readable. No new text was found.
+   "1 days Before Roll On" and "42 days After Roll On" did not appear in that file. Other files may still differ.
 3. Is a visible sign-in about once per working day acceptable to the PMO, or must it be rarer? This is your call to
    check with her after the first real test.
 4. Should the app tell the PMO when a joiner's file has not changed for a long time (for example 7 days)?
 5. Where does the PMO get the package (Teams, email, SharePoint folder)? Needed for the install steps.
+6. Do joiners fill in Completion Date? In the one real file checked on 2026-10-29 it was empty on every row, including
+   46 Completed tasks. Without a date the app cannot tell lateness, so every Completed task counts as Completed (same
+   rule as the original HTML) and the Completed Late tile stays 0. Ask the PMO; if it is never filled, consider
+   telling her on the joiner page why Completed Late is empty. The date format (text vs date cell) is still unknown.

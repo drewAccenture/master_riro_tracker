@@ -10,14 +10,24 @@ function show(state) {
   $("folder").textContent = state.folder;
   $("message").textContent = state.running ? "Syncing..." : state.message;
   $("last-success").textContent = state.last_success;
+  // ADR-004: tell her when the data was restored from the backup or started empty.
+  if (state.data_note !== undefined) $("data-note").textContent = state.data_note || "";
   const details = [];
   if (state.files_listed) details.push(`${state.files_listed} files listed`);
   if (state.report) {
-    details.push(`file 1: ${state.report.row_count} rows`);
+    details.push(`first file read: ${state.report.row_count} rows`);
     details.push(`headers found: ${state.report.headers_found.join(", ") || "none"}`);
     details.push(`headers missing: ${state.report.headers_missing.join(", ") || "none"}`);
   }
   $("details").textContent = details.join(" · ");
+  // US-07: each skipped file with its reason. textContent only, so a file name is never read as HTML.
+  const skipped = $("skipped");
+  skipped.replaceChildren();
+  for (const file of state.running ? [] : state.skipped || []) {
+    const item = document.createElement("li");
+    item.textContent = `${file.name}: ${file.reason}`;
+    skipped.append(item);
+  }
   $("sync").textContent = state.running ? "Syncing..." : "Sync now";
   $("sync").disabled = state.running || busy;
   // Connected: nothing to click. A later failed sign-in makes connected false, so the button comes back by itself.

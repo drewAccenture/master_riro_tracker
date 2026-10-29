@@ -1,7 +1,7 @@
 """Plain dataclasses shared by all layers."""
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 
 
 @dataclass(frozen=True)
@@ -74,3 +74,29 @@ class JoinerStatus:
     delayed: bool
     delayed_count: int
     warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class FileRecord:
+    """What the app keeps about one checklist file, by its SharePoint UniqueId (US-09, US-10, ADR-005)."""
+
+    id: str
+    name: str
+    etag: str
+    modified: str
+    present: bool  # False once the file left the folder (US-10); its data is kept
+    checklist: Checklist | None  # last good read, None if never read
+    read_at: datetime | None
+    problem: str | None  # reason the last read failed, None when it worked
+
+
+@dataclass(frozen=True)
+class SyncRun:
+    """One sync, for the summary and diagnostics (US-07)."""
+
+    at: datetime
+    result: str  # "ok", "partial" or "failed"
+    files_read: int
+    updated: int
+    unchanged: int
+    skipped: tuple[tuple[str, str], ...]  # (file name, reason)

@@ -26,6 +26,7 @@ STEPS = {
     "list",
     "download",
     "header_check",
+    "file_read",
     "sync",
     "edge_close",
 }
@@ -39,6 +40,8 @@ ERROR_KINDS = {
     "TimedOut",
     "EdgeMissing",
     "UnreadableFile",
+    "NotAChecklist",
+    "SaveFailed",
     "Unexpected",
 }
 _CLASS_NAME = re.compile(
@@ -86,7 +89,7 @@ def _allowed(name: str, value) -> str | None:
         )
     if name == "duration_s":
         return f"{value:.2f}".rstrip("0").rstrip(".") if _number(value) else None
-    if name in ("http_status", "attempt") or name.endswith("_count"):
+    if name in ("http_status", "attempt", "file_index") or name.endswith("_count"):
         return (
             str(value)
             if isinstance(value, int) and not isinstance(value, bool)
