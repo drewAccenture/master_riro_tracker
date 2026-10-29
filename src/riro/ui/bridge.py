@@ -1,6 +1,6 @@
 """The methods the page may call (pywebview js_api). Plain data in and out, no rules here.
 
-pywebview exposes every public attribute, so everything except the seven methods is private.
+pywebview exposes every public attribute, so everything except the eight methods is private.
 """
 
 from datetime import date, datetime
@@ -63,13 +63,24 @@ def _task_rows(view) -> list[dict]:
 
 
 class Bridge:
-    def __init__(self, sync, diagnostics, autosync=None, data_note=None, joiners=None):
+    def __init__(
+        self,
+        sync,
+        diagnostics,
+        autosync=None,
+        data_note=None,
+        joiners=None,
+        screens=None,
+    ):
         self._sync = sync
         self._diagnostics = diagnostics
         self._autosync = autosync
         # ADR-004: "restored from the backup copy" and the like.
         self._data_note = data_note
         self._joiners = joiners  # services.joiners.JoinerService
+        self._screens = (
+            screens  # services.screens.Screens: display text for the tracker page
+        )
 
     def last_result(self) -> dict:
         last = self._sync.last_result()
@@ -133,7 +144,7 @@ class Bridge:
         if view is None:
             return {"found": False}
         joiner, status = view.joiner, view.status
-        return {
+        result = {
             "found": True,
             "id": joiner.id,
             "name": joiner.name,
@@ -149,6 +160,17 @@ class Bridge:
             "skipped_rows": len(view.checklist.skipped_rows) if view.checklist else 0,
             "tasks": _task_rows(view),
         }
+        if self._screens is not None:
+            result.update(self._screens.joiner_extra(view, day))
+        return result
+
+    def overview(self, as_of: str) -> dict:
+        day = parse_date(as_of)
+        if day is None:
+            return {"error": BAD_DATE}
+        if self._screens is None:
+            return {"error": "The tracker screens are not available."}
+        return self._screens.overview(day)
 
     def set_roll_on(self, joiner_id: str, date: str) -> dict:
         ok, message = self._joiners.set_roll_on(joiner_id, date)

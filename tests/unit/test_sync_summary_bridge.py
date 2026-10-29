@@ -160,7 +160,7 @@ def test_us06_connect_without_auto_sync_still_works():
     assert Bridge(FakeSync(PARTIAL), FakeDiagnostics()).connect()["state"] == "ok"
 
 
-def test_page_still_sees_only_the_seven_methods_with_auto_sync():
+def test_page_still_sees_only_the_eight_methods_with_auto_sync():
     bridge = Bridge(FakeSync(PARTIAL), FakeDiagnostics(), autosync=FakeAutoSync())
     public = {name for name in dir(bridge) if not name.startswith("_")}
     assert public == {
@@ -171,4 +171,5 @@ def test_page_still_sees_only_the_seven_methods_with_auto_sync():
         "joiners",
         "joiner",
         "set_roll_on",
+        "overview",
     }

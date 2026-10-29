@@ -258,7 +258,7 @@ Kept from the original HTML, but not built in version 1.
    Partly answered on 2026-10-29: one real file (October template) was read locally with the slice 2 code, counts
    only, nothing copied. Sheet "ROLL-IN CHECKLIST" (a second sheet "Sheet1" exists) was chosen, all required headers
    were found, 95 tasks were read and none skipped (not 96, which fits the US-05 bug cause). Statuses: only Completed,
-   In Progress and Not Applicable. Extra columns the app ignores: Guidelines, Proof of Completion, Column1, Column2.
+   In Progress and Not Applicable. Extra columns the app ignores: Proof of Completion, Column1, Column2 (Guidelines is read since slice 5).
    There is no "Remarks (Tracker)" column. Completion Date was empty on all 95 rows (see question 6). openpyxl warns
    "Data Validation extension is not supported" when opening the template; harmless for reading.
 2. What are all the Deadline texts used in the current template? (Needed for US-04.)

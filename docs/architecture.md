@@ -18,7 +18,7 @@ PMO's user folder.
  +-------------------------------- RIRO Tracker (one Python process) --------------------------------+
  |                                                                                                  |
  |  UI: pywebview window (HTML/CSS/JS, look of the original)                                        |
- |        |  calls Python through pywebview's js_api: the 7 bridge methods (WebView2 messaging)     |
+ |        |  calls Python through pywebview's js_api: the 8 bridge methods (WebView2 messaging)     |
  |        v                                                                                         |
  |  ui/bridge.py   thin: turns UI calls into service calls, returns plain data                      |
  |        |                                                                                         |
@@ -61,13 +61,19 @@ src/riro/
     bridge.py             methods the page can call
     web/                  index.html, styles.css, app.js (look of the original HTML)
   services/
-    sync.py               timer (at start, then every 5 min), one sync at a time, summary, plain-word errors
+    sync.py               one sync at a time, watchdog, plain-word errors
+    sync_apply.py         the middle of a sync: read the folder, match joiners, one save
+    sync_files.py         per file: ETag check, download, read, keep last good data (US-09, US-10)
+    sync_messages.py      SyncResult and the plain words of the sync box
+    autosync.py           timer: at start, then every 5 min (US-06)
+    screens.py            screen data for the page (US-11); screen_text.py holds the wording
     joiners.py            roll-on dates, waiting list, hidden and returning joiners, identity rules (ADR-005)
     diagnostics.py        redacted event log, "Copy diagnostic report" (ADR-007)
   core/
     checklist.py          xlsx bytes -> rows + skipped rows with reasons (openpyxl)
     deadlines.py          "10 days Before Roll On" -> -10, otherwise "deadline unclear"
     status.py             task and joiner status, tile counts, percent done
+    overview.py           KPIs, heatmap buckets, needs attention, deadline ladder, meter
     models.py             plain dataclasses shared by all layers
   connectors/sharepoint/
     edge.py               start Edge (visible or headless), find the DevTools port (ADR-009), open a session
@@ -80,6 +86,7 @@ src/riro/
   store/
     datafile.py           atomic save, .bak copy, lock, schema_version and upgrades
     repo.py               read and change joiners, tasks, files, roll-on dates, sync runs
+    codec.py              JSON <-> dataclasses for the data file
 tests/
   unit/                   core rules, store, services with a fake connector
   connector/              client.py against a fake DevTools endpoint; one opt-in live test
