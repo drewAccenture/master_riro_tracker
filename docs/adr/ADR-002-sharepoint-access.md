@@ -1,6 +1,6 @@
 # ADR-002: SharePoint access = app-owned Edge through DevTools, kept open while the app runs
 
-Status: Accepted
+Status: Accepted. Refined by ADR-009 and ADR-010.
 Date: 2026-10-26
 
 ## Context

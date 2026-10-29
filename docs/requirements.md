@@ -1,6 +1,8 @@
 # Master RIRO Checklist Tracker: Requirements (version 1)
 
 Status: Approved 2026-10-27
+Changed 2026-10-27: US-01 "Connected" wording (slice 1 build, plan section 11).
+Changed 2026-10-28: US-01 the Connect button shows "Connected" and cannot be clicked while connected.
 Date: 2026-10-26
 
 ## 1. Problem statement
@@ -50,8 +52,9 @@ As the PMO, I want to connect the tracker to the checklist folder once, so that 
 - Given the app is installed and not connected, When I open it, Then I see "SharePoint: Not connected" and a
   "Connect to SharePoint" button, with the folder already filled in.
 - Given I click "Connect to SharePoint", When an Edge window opens and I sign in with my Accenture account (and MFA
-  if asked), Then the window closes by itself once the folder is reached, the box says "SharePoint: Connected", and a
-  first sync starts.
+  if asked), Then the window closes by itself once the folder is reached and a first sync starts. The box says
+  "SharePoint: Connected" once a sync has worked. If that first sync fails, the box says in plain words what went
+  wrong (US-07). While connected, the button shows "Connected" and cannot be clicked.
 - Given I close the sign-in window or do not finish within 3 minutes, Then the box says, in plain words, that the
   sign-in did not finish, and nothing else changes.
 - Given I click "Disconnect", Then the app forgets the sign-in, and my roll-on dates and last data stay.

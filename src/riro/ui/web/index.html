@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Master RIRO Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>Master RIRO Tracker</h1>
+    <p class="sub">Sign-in test (slice 1)</p>
+
+    <section class="box">
+      <p id="connection" class="connection">SharePoint: Not connected</p>
+      <p class="folder">Folder: <span id="folder"></span></p>
+      <div class="actions">
+        <button id="connect" type="button">Connect to SharePoint</button>
+        <button id="sync" type="button">Sync now</button>
+      </div>
+      <p id="notice" class="notice" hidden></p>
+    </section>
+
+    <section class="box">
+      <h2>Last result</h2>
+      <p id="message">Not synced yet.</p>
+      <p>Last successful sync: <span id="last-success">Never</span></p>
+      <p id="details" class="details"></p>
+    </section>
+
+    <section class="box">
+      <button id="copy" type="button">Copy diagnostic report</button>
+      <span id="copied" class="copied" hidden>Copied</span>
+      <textarea id="report-buffer" aria-hidden="true" tabindex="-1"></textarea>
+    </section>
+  </main>
+  <footer>ACCENTURE CONFIDENTIAL</footer>
+  <script src="app.js"></script>
+</body>
+</html>

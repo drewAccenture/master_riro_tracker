@@ -18,7 +18,7 @@ PMO's user folder.
  +-------------------------------- RIRO Tracker (one Python process) --------------------------------+
  |                                                                                                  |
  |  UI: pywebview window (HTML/CSS/JS, look of the original)                                        |
- |        |  calls Python through one JS function: api.call(name, args)                            |
+ |        |  calls Python through pywebview's js_api: the 4 bridge methods (WebView2 messaging)     |
  |        v                                                                                         |
  |  ui/bridge.py   thin: turns UI calls into service calls, returns plain data                      |
  |        |                                                                                         |
@@ -46,7 +46,8 @@ PMO's user folder.
 | Store | `src/riro/store/` | Loads and saves the data file safely | Only layer that touches storage (ADR-004) |
 
 Layers dropped on purpose:
-- No web server and no HTTP API: pywebview calls Python directly.
+- No web server or HTTP API of our own: the page calls Python through pywebview (WebView2 messaging). pywebview
+  itself serves the `ui/web` files from 127.0.0.1 on a random port while the app runs (ADR-012).
 - No database server or ORM: the data is small (ADR-004).
 - No cache layers: the store keeps each file's ETag and its last good rows. Nothing else.
 - No built-in task template: each file is the truth for its own tasks (US-02).
@@ -69,9 +70,12 @@ src/riro/
     status.py             task and joiner status, tile counts, percent done
     models.py             plain dataclasses shared by all layers
   connectors/sharepoint/
-    edge.py               start Edge (visible or headless), Job Object, kill
+    edge.py               start Edge (visible or headless), find the DevTools port (ADR-009), open a session
+    edge_process.py       find msedge.exe, Job Object, kill
     cdp.py                small DevTools client: send a command, wait with a time limit
     client.py             sign_in, list_files, download, renew
+    session.py            the one headless Edge session, shared safely between threads
+    urls.py               the allowed site and folder addresses, GET-only fetch
     errors.py             NeedsSignIn, NoAccess, NotFound, Unreachable, TimedOut, EdgeMissing
   store/
     datafile.py           atomic save, .bak copy, lock, schema_version and upgrades
@@ -116,8 +120,9 @@ ui  ->  services  ->  core
    Python keeps the process handle and puts the process in a Windows Job Object.
    Killing the job ends Edge and all its child processes at once. If the app exits or crashes, Windows ends the job.
 2. **Sign-in (US-01).** Edge starts visible on the folder page. The PMO signs in (SSO, MFA). When the page URL is on
-   the site and not a sign-in page, the app kills the visible Edge and starts a headless one on the same profile.
-   Limit 3 minutes.
+   the site and not a sign-in page, the app closes the visible Edge politely for at most 5 s, so it saves the new
+   sign-in, then kills it by its handle (ADR-010), and starts a headless one on the same profile. Limit 3 minutes.
+   A sign-in that does not finish (time-out, window closed, app closed) kills the visible Edge at once.
 3. **Reading.** A headless page sits on the SharePoint site. Each call runs `fetch()` inside that page with
    `redirect: "manual"`. Cookies stay inside Edge. Our code never reads, copies or logs them.
    - List: `GetFolderByServerRelativePath(...)/Files?$select=Name,UniqueId,ETag,TimeLastModified,Length`

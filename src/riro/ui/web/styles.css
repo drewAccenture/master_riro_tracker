@@ -1,0 +1,122 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  color: #1f1f1f;
+  background: #f5f5f7;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.sub {
+  margin: 4px 0 16px;
+  color: #5c5c5c;
+}
+
+.box {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.connection {
+  font-weight: 600;
+  margin-top: 0;
+}
+
+.connection::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #8a8a8a;
+}
+
+.connection.is-connected::before {
+  background: #1b7f3b;
+}
+
+.folder,
+.details {
+  color: #5c5c5c;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid #a100ff;
+  border-radius: 4px;
+  background: #a100ff;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.notice {
+  color: #b00020;
+}
+
+.copied {
+  margin-left: 8px;
+  color: #1b7f3b;
+}
+
+#report-buffer {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+}
+
+footer {
+  text-align: center;
+  font-size: 11px;
+  color: #8a8a8a;
+  padding: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #eaeaea;
+    background: #1b1b1f;
+  }
+
+  .box {
+    background: #26262b;
+    border-color: #3a3a40;
+  }
+
+  .sub,
+  .folder,
+  .details {
+    color: #a8a8a8;
+  }
+}

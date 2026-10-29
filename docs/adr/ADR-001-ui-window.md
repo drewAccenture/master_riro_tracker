@@ -1,6 +1,6 @@
 # ADR-001: UI = pywebview desktop window with HTML/CSS/JS
 
-Status: Accepted
+Status: Accepted. Refined by ADR-012.
 Date: 2026-10-26
 
 ## Context

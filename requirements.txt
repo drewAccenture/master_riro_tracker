@@ -1,0 +1,13 @@
+# Runtime lock file: every package the packaged app needs, with sub-dependencies, exact pins (docs/constraints.md).
+# Read by tools\build_package.ps1, installed with --no-deps. A new package here needs an ADR.
+bottle==0.13.4
+cffi==2.1.1
+clr-loader==0.3.1
+et-xmlfile==2.0.0
+openpyxl==3.1.5
+proxy-tools==0.1.0
+pycparser==3.12
+pythonnet==3.2.1
+pywebview==6.2.1
+typing-extensions==4.16.0
+websocket-client==1.9.2
