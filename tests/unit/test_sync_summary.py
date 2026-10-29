@@ -30,7 +30,7 @@ def test_us07_without_a_repo_the_service_uses_an_in_memory_one(checklist_bytes):
     service = SyncService(folder, FakeDiagnostics(), clock=Clock(), now=Wall(T1))
     result = service.sync()
     assert result.state == "ok"
-    assert result.message == "Sync OK: 1 files read (1 updated, 0 unchanged)."
+    assert result.message == "Sync OK: 1 joiner (1 updated, 0 unchanged)."
     assert (result.files_read, result.updated, result.unchanged) == (1, 1, 0)
 
 

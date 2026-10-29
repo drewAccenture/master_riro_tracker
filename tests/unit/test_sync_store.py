@@ -68,7 +68,7 @@ def test_plan6_end_to_end_three_syncs_and_a_restart(folder, path, owner_file):
 
     first = service.sync()  # 1. all read
     assert first.state == "ok"
-    assert first.message == "Sync OK: 3 files read (3 updated, 0 unchanged)."
+    assert first.message == "Sync OK: 3 joiners (3 updated, 0 unchanged)."
     assert (first.files_read, first.updated, first.unchanged, first.skipped) == (
         3,
         3,
@@ -87,7 +87,7 @@ def test_plan6_end_to_end_three_syncs_and_a_restart(folder, path, owner_file):
     folder.downloads.clear()
     second = service.sync()
     assert folder.downloads == []
-    assert second.message == "Sync OK: 3 files read (0 updated, 3 unchanged)."
+    assert second.message == "Sync OK: 3 joiners (0 updated, 3 unchanged)."
     assert second.last_success == T2
 
     wall.t = T3  # 3. B broken, C removed (US-09, US-10)
@@ -95,7 +95,10 @@ def test_plan6_end_to_end_three_syncs_and_a_restart(folder, path, owner_file):
     folder.remove("id-c")
     third = service.sync()
     assert third.state == "ok"
-    assert third.message == "Sync partly worked: 1 of 2 files read. 1 file was skipped."
+    assert (
+        third.message
+        == "Sync partly worked: 2 joiners (0 updated). 1 file was skipped."
+    )
     assert third.skipped == ((B, UNREADABLE),)
     assert third.last_success == T3
     b = repo.file("id-b")
@@ -126,7 +129,7 @@ def test_plan6_end_to_end_three_syncs_and_a_restart(folder, path, owner_file):
     assert service2.is_connected() is False  # until a sync works
     folder.change("id-b", owner_file("Test Person B"), etag="e-id-b-3")
     fourth = service2.sync()
-    assert fourth.message == "Sync OK: 2 files read (1 updated, 1 unchanged)."
+    assert fourth.message == "Sync OK: 2 joiners (1 updated, 1 unchanged)."
     assert restarted.file("id-b").problem is None
     assert service2.is_connected() is True
 
@@ -142,7 +145,8 @@ def test_us09_one_download_not_found_or_no_access_skips_only_that_file(
     result = service.sync()
     assert result.state == "ok"
     assert (
-        result.message == "Sync partly worked: 2 of 3 files read. 1 file was skipped."
+        result.message
+        == "Sync partly worked: 2 joiners (2 updated). 1 file was skipped."
     )
     assert result.skipped == ((B, reason),)
     assert result.last_success == T1
@@ -158,7 +162,8 @@ def test_us07_two_skipped_files_use_the_plural(folder, path):
     folder.download_fail["id-c"] = errors.NotFound("synthetic")
     result = service.sync()
     assert (
-        result.message == "Sync partly worked: 1 of 3 files read. 2 files were skipped."
+        result.message
+        == "Sync partly worked: 1 joiner (1 updated). 2 files were skipped."
     )
     assert result.skipped == ((A, UNREADABLE), (C, NOT_FOUND))
 

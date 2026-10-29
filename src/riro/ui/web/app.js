@@ -1,4 +1,4 @@
-// One page for slice 1. Shows what Python returns; no rules here.
+// Test page for slices 1 to 4. Shows what Python returns; no rules here (statuses come from Python).
 "use strict";
 
 const $ = (id) => document.getElementById(id);
@@ -40,13 +40,77 @@ function show(state) {
   }
 }
 
+function list(id, texts) {
+  // textContent only, so names and file names are never read as HTML.
+  const box = $(id);
+  box.replaceChildren();
+  for (const text of texts) {
+    const item = document.createElement("li");
+    item.textContent = text;
+    box.append(item);
+  }
+}
+
+function today() {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+let shownJoiners = "";
+
+function showJoiners(result) {
+  const text = JSON.stringify(result);
+  if (text === shownJoiners) return; // keep a date she is typing
+  shownJoiners = text;
+  const joiners = result.joiners || [];
+  const waiting = $("waiting");
+  waiting.replaceChildren();
+  for (const joiner of joiners.filter((j) => j.waiting)) {
+    const item = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = `${joiner.name} `;
+    const input = document.createElement("input");
+    input.type = "date";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Confirm";
+    button.addEventListener("click", async () => {
+      // US-03: typed once; Python checks the date and saves it.
+      try {
+        const answer = await window.pywebview.api.set_roll_on(joiner.id, input.value);
+        notice(answer.ok ? "" : answer.message);
+      } catch (e) {
+        notice("The roll-on date could not be saved. Click Confirm again.");
+      }
+      shownJoiners = "";
+      await refreshJoiners();
+    });
+    item.append(name, input, button);
+    waiting.append(item);
+  }
+  list(
+    "joiners",
+    joiners
+      .filter((j) => !j.waiting)
+      .map((j) => `${j.name} · Roll-on ${j.roll_on} · ${j.percent}% done · ${j.delayed_count} delayed`),
+  );
+}
+
+async function refreshJoiners() {
+  showJoiners(await window.pywebview.api.joiners(today()));
+}
+
 function notice(text) {
   $("notice").textContent = text || "";
   $("notice").hidden = !text;
 }
 
 async function refresh() {
-  show(await window.pywebview.api.last_result());
+  const state = await window.pywebview.api.last_result();
+  show(state);
+  list("warnings", state.warnings || []);
+  await refreshJoiners();
 }
 
 async function run(call, button) {

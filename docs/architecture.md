@@ -18,7 +18,7 @@ PMO's user folder.
  +-------------------------------- RIRO Tracker (one Python process) --------------------------------+
  |                                                                                                  |
  |  UI: pywebview window (HTML/CSS/JS, look of the original)                                        |
- |        |  calls Python through pywebview's js_api: the 4 bridge methods (WebView2 messaging)     |
+ |        |  calls Python through pywebview's js_api: the 7 bridge methods (WebView2 messaging)     |
  |        v                                                                                         |
  |  ui/bridge.py   thin: turns UI calls into service calls, returns plain data                      |
  |        |                                                                                         |
