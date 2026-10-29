@@ -14,7 +14,7 @@ SKIPPED = (
 )
 PARTIAL = SyncResult(
     "ok",
-    "Sync partly worked: 1 of 3 files read. 2 files were skipped.",
+    "Sync partly worked: 1 joiner (1 updated). 2 files were skipped.",
     files_listed=4,
     last_success=datetime(2026, 10, 29, 9, 5),
     files_read=1,
@@ -160,7 +160,15 @@ def test_us06_connect_without_auto_sync_still_works():
     assert Bridge(FakeSync(PARTIAL), FakeDiagnostics()).connect()["state"] == "ok"
 
 
-def test_page_still_sees_only_the_four_methods_with_auto_sync():
+def test_page_still_sees_only_the_seven_methods_with_auto_sync():
     bridge = Bridge(FakeSync(PARTIAL), FakeDiagnostics(), autosync=FakeAutoSync())
     public = {name for name in dir(bridge) if not name.startswith("_")}
-    assert public == {"connect", "sync_now", "last_result", "copy_report"}
+    assert public == {
+        "connect",
+        "sync_now",
+        "last_result",
+        "copy_report",
+        "joiners",
+        "joiner",
+        "set_roll_on",
+    }

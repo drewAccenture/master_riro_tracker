@@ -111,7 +111,15 @@ def test_us16_copy_report_returns_the_report_text():
     assert bridge.copy_report() == {"text": "synthetic report text"}
 
 
-def test_page_sees_only_the_four_methods():
+def test_page_sees_only_the_seven_methods():
     bridge, _ = make()
     public = {name for name in dir(bridge) if not name.startswith("_")}
-    assert public == {"connect", "sync_now", "last_result", "copy_report"}
+    assert public == {
+        "connect",
+        "sync_now",
+        "last_result",
+        "copy_report",
+        "joiners",
+        "joiner",
+        "set_roll_on",
+    }

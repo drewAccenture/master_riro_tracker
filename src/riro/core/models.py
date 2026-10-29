@@ -100,3 +100,27 @@ class SyncRun:
     updated: int
     unchanged: int
     skipped: tuple[tuple[str, str], ...]  # (file name, reason)
+
+
+@dataclass(frozen=True)
+class Joiner:
+    """One new joiner (ADR-005). The roll-on date lives here, never on the file (US-03)."""
+
+    id: str  # stable: the UniqueId of the first file seen, never changes
+    file_id: str  # the file read now; moves on a re-upload
+    name: str
+    owner_key: str  # normalized Checklist Owner, else normalized file name
+    roll_on: date | None  # None = "Waiting for a roll-on date"
+    hidden: bool  # no file in use now (left the folder, or lost a same-owner tie); data kept (US-10)
+    missing_syncs: int  # syncs in a row while hidden; drives the re-upload window
+
+
+@dataclass(frozen=True)
+class JoinerView:
+    """What the page needs for one joiner. status is None while waiting for a roll-on date."""
+
+    joiner: Joiner
+    checklist: Checklist | None
+    status: JoinerStatus | None
+    problem: str | None
+    read_at: datetime | None

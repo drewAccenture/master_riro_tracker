@@ -9,7 +9,6 @@ sync runs past the whole-sync limit, so a stuck call ends instead of waiting for
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import datetime
 
 from riro.connectors.sharepoint.errors import (
@@ -18,9 +17,8 @@ from riro.connectors.sharepoint.errors import (
     NeedsSignIn,
     TimedOut,
 )
-from riro.core.checklist import UnreadableFile, check_headers
-from riro.core.models import HeaderReport, SyncRun
-from riro.services.sync_files import event_fields, sync_folder
+from riro.core.models import SyncRun
+from riro.services.sync_apply import read_folder
 from riro.services.sync_messages import (
     EDGE_NOT_STARTED,
     FOLDER_LABEL,
@@ -30,6 +28,7 @@ from riro.services.sync_messages import (
     SIGN_IN_NOT_FINISHED,
     SYNCING,
     UNEXPECTED,
+    SyncResult,
     message_for,
     summary,
 )
@@ -53,20 +52,6 @@ __all__ = [
 ]
 
 SYNC_LIMIT_S = 180.0  # ADR-003: whole sync
-
-
-@dataclass(frozen=True)
-class SyncResult:
-    state: str  # "ok", "failed", "syncing", "not_connected", "sign_in_not_finished"
-    message: str
-    files_listed: int = 0
-    report: HeaderReport | None = None
-    last_success: datetime | None = None
-    files_read: int = 0
-    updated: int = 0
-    unchanged: int = 0
-    # (file name, reason), shown on her screen only
-    skipped: tuple[tuple[str, str], ...] = ()
 
 
 class _OverLimit(Exception):
@@ -190,13 +175,23 @@ class SyncService:
                 raise _OverLimit()
 
         files: list[dict] = []
+        counts: dict = {}
         exception = None
         try:
             self._ping()
             within_limit()
             files = self._connector.list_files()
             within_limit()
-            result = self._read_folder(files, within_limit)
+            result, counts = read_folder(
+                self._connector,
+                self._diagnostics,
+                self._repo,
+                files,
+                self._now(),
+                within_limit,
+                self._last_success,
+            )
+            self._last_success = result.last_success
             kind = None if result.state == "ok" else "SaveFailed"
         except _OverLimit:
             self._connector.close()
@@ -234,60 +229,10 @@ class SyncService:
             updated_count=result.updated,
             unchanged_count=result.unchanged,
             skipped_count=len(result.skipped),
+            **counts,
             duration_s=self._clock() - started,
         )
         return result
-
-    def _read_folder(self, files: list[dict], within_limit) -> SyncResult:
-        first: dict = {}  # header report of the first downloaded file that opens (slice 1 evidence)
-
-        def download(file_id: str) -> bytes:
-            data = self._connector.download(file_id)
-            if not first:
-                try:
-                    first.update(id=file_id, report=check_headers(data))
-                except UnreadableFile:
-                    pass
-            return data
-
-        stored = {record.id: record for record in self._repo.files()}
-        now = self._now()
-        folder = sync_folder(files, stored, download, now, check=within_limit)
-        report = first.get("report")
-        for outcome in folder.outcomes:
-            if outcome.file_id == first.get("id"):
-                self._diagnostics.file_report(outcome.index, folder.total, report)
-            if outcome.kind != "unchanged":
-                self._file_event(outcome)
-        counts = {
-            "files_read": folder.updated + folder.unchanged,
-            "updated": folder.updated,
-            "unchanged": folder.unchanged,
-            "skipped": folder.skipped,
-        }
-        run = SyncRun(now, "partial" if folder.skipped else "ok", **counts)
-        try:
-            self._repo.apply(folder.records, now, run)
-        except SaveFailed:
-            return SyncResult(
-                "failed",
-                SAVE_FAILED,
-                files_listed=len(files),
-                last_success=self._last_success,
-                **counts,
-            )
-        self._last_success = now
-        return SyncResult(
-            "ok",
-            summary(folder),
-            files_listed=len(files),
-            report=report,
-            last_success=now,
-            **counts,
-        )
-
-    def _file_event(self, outcome) -> None:
-        self._diagnostics.event("file_read", **event_fields(outcome))
 
     def _add_failed_run(self) -> None:
         try:
