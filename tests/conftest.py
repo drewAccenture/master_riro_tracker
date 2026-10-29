@@ -61,10 +61,56 @@ def synthetic_checklist_rows(owner="Test Person A"):
     ]
 
 
+CHECKLIST_HEADER = list(REQUIRED_HEADERS) + list(OPTIONAL_HEADERS)
+
+
+def task_row(
+    number,
+    description,
+    status="Not Started",
+    completion_date=None,
+    deadline="On Roll On",
+    owner="Test Person A",
+    role="PMO",
+    assigned_id="",
+    remarks="",
+):
+    """One synthetic data row in CHECKLIST_HEADER order (required headers, then optional)."""
+    return [
+        owner,
+        role,
+        number,
+        description,
+        status,
+        completion_date,
+        deadline,
+        assigned_id,
+        remarks,
+    ]
+
+
 @pytest.fixture
 def make_xlsx():
     """Factory fixture: make_xlsx([(sheet_name, rows), ...]) -> bytes."""
     return build_xlsx
+
+
+@pytest.fixture
+def make_row():
+    """Factory fixture: make_row(number, description, status=..., ...) -> one row (see task_row)."""
+    return task_row
+
+
+@pytest.fixture
+def make_checklist():
+    """Factory fixture: make_checklist(rows, sheet="Roll-In Checklist", header=CHECKLIST_HEADER) -> bytes.
+    rows are data rows only; the header row is added as row 1."""
+
+    def _make(rows, sheet="Roll-In Checklist", header=None):
+        head = list(CHECKLIST_HEADER if header is None else header)
+        return build_xlsx([(sheet, [head] + [list(r) for r in rows])])
+
+    return _make
 
 
 @pytest.fixture
