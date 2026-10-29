@@ -1,4 +1,6 @@
-"""Slice 1 sync: connect, sync on start, Sync now, one sync at a time, plain-word errors (US-01, US-07, ADR-003).
+"""Sync: connect, sync on start, Sync now, one sync at a time, the folder summary, plain-word errors.
+
+US-01, US-06, US-07, US-09, US-10, ADR-003, ADR-004. The per-file work is in sync_files.py.
 
 Nobody waits on a lock: a second sync while one runs returns "Syncing..." at once. A watchdog kills Edge when a
 sync runs past the whole-sync limit, so a stuck call ends instead of waiting for its own limit.
@@ -10,7 +12,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from riro.connectors.sharepoint.client import FOLDER_PATH
 from riro.connectors.sharepoint.errors import (
     ConnectorError,
     EdgeNotStarted,
@@ -18,39 +19,40 @@ from riro.connectors.sharepoint.errors import (
     TimedOut,
 )
 from riro.core.checklist import UnreadableFile, check_headers
-from riro.core.models import HeaderReport
+from riro.core.models import HeaderReport, SyncRun
+from riro.services.sync_files import event_fields, sync_folder
+from riro.services.sync_messages import (
+    EDGE_NOT_STARTED,
+    FOLDER_LABEL,
+    MESSAGES,
+    NOT_CONNECTED,
+    SAVE_FAILED,
+    SIGN_IN_NOT_FINISHED,
+    SYNCING,
+    UNEXPECTED,
+    message_for,
+    summary,
+)
+from riro.store.datafile import SaveFailed
+from riro.store.repo import Repo
+
+# Re-exported: the bridge and the tests import these from here.
+__all__ = [
+    "EDGE_NOT_STARTED",
+    "FOLDER_LABEL",
+    "MESSAGES",
+    "NOT_CONNECTED",
+    "SAVE_FAILED",
+    "SIGN_IN_NOT_FINISHED",
+    "SYNCING",
+    "UNEXPECTED",
+    "SyncResult",
+    "SyncService",
+    "message_for",
+    "summary",
+]
 
 SYNC_LIMIT_S = 180.0  # ADR-003: whole sync
-SIGN_IN_NOT_FINISHED = (
-    "The sign-in did not finish. Click Connect to SharePoint to try again."
-)
-SYNCING = "Syncing..."
-NOT_CONNECTED = "SharePoint: Not connected"
-UNREADABLE_FILE = (
-    "The checklist file could not be read. It may be open, broken or not an .xlsx file."
-)
-EDGE_NOT_STARTED = "Microsoft Edge could not be started. Click Sync now to try again."
-UNEXPECTED = (
-    "Something went wrong. Click Copy diagnostic report and send it to the maintainer."
-)
-FOLDER_LABEL = " / ".join(FOLDER_PATH.split("/")[3:])
-
-MESSAGES = {
-    "NeedsSignIn": "Your SharePoint sign-in has expired. Click Sign in again.",
-    "NoAccess": "You do not have access to the folder. Ask the folder owner for read access.",
-    "NotFound": "The folder was not found. It may have been moved or renamed.",
-    "Unreachable": "SharePoint could not be reached. Check your network or VPN.",
-    # Slice 1 has no timer. Back to "The app will try again in 5 minutes." (US-07) with the US-06 timer.
-    "TimedOut": "SharePoint did not answer in time. Click Sync now to try again.",
-    "EdgeMissing": "Microsoft Edge was not found. Install Microsoft Edge and try again.",
-}
-
-
-def message_for(error: ConnectorError) -> str:
-    """Plain words for the error kind. The error's own text is never shown."""
-    if isinstance(error, EdgeNotStarted):
-        return EDGE_NOT_STARTED
-    return MESSAGES.get(type(error).kind, MESSAGES["Unreachable"])
 
 
 @dataclass(frozen=True)
@@ -60,6 +62,11 @@ class SyncResult:
     files_listed: int = 0
     report: HeaderReport | None = None
     last_success: datetime | None = None
+    files_read: int = 0
+    updated: int = 0
+    unchanged: int = 0
+    # (file name, reason), shown on her screen only
+    skipped: tuple[tuple[str, str], ...] = ()
 
 
 class _OverLimit(Exception):
@@ -72,11 +79,13 @@ class SyncService:
         connector,
         diagnostics,
         *,
+        repo: Repo | None = None,
         clock: Callable[[], float] = time.monotonic,
         now: Callable[[], datetime] = datetime.now,
         limit_s: float = SYNC_LIMIT_S,
     ):
         self._connector = connector
+        self._repo = repo if repo is not None else Repo.in_memory()
         self._diagnostics = diagnostics
         self._clock = clock
         self._now = now
@@ -84,8 +93,10 @@ class SyncService:
         self._running = threading.Lock()
         self._overran = threading.Event()
         self._current_run: object | None = None
-        self._last_success: datetime | None = None
-        self._last = SyncResult("not_connected", NOT_CONNECTED)
+        self._last_success: datetime | None = self._repo.last_success()
+        self._last = SyncResult(
+            "not_connected", NOT_CONNECTED, last_success=self._last_success
+        )
 
     def last_result(self) -> SyncResult:
         return self._last
@@ -185,25 +196,8 @@ class SyncService:
             within_limit()
             files = self._connector.list_files()
             within_limit()
-            checklists = [f for f in files if str(f["name"]).lower().endswith(".xlsx")]
-            report = None
-            if checklists:
-                data = self._connector.download(checklists[0]["id"])
-                within_limit()
-                report = check_headers(data)
-                self._diagnostics.event(
-                    "header_check", result="ok", rows_count=report.row_count
-                )
-                self._diagnostics.file_report(1, len(checklists), report)
-            self._last_success = self._now()
-            result = SyncResult(
-                "ok",
-                f"Sync OK: {len(files)} files listed, {len(checklists)} checklists.",
-                files_listed=len(files),
-                report=report,
-                last_success=self._last_success,
-            )
-            kind = None
+            result = self._read_folder(files, within_limit)
+            kind = None if result.state == "ok" else "SaveFailed"
         except _OverLimit:
             self._connector.close()
             kind = TimedOut.kind
@@ -218,9 +212,6 @@ class SyncService:
             else:
                 kind = error.kind
                 result = self._failed("failed", message_for(error), files)
-        except UnreadableFile:
-            kind = "UnreadableFile"
-            result = self._failed("failed", UNREADABLE_FILE, files)
         except Exception as error:  # noqa: BLE001 - reported in plain words; the report gets the type only
             if self._overran.is_set():
                 kind = TimedOut.kind
@@ -232,15 +223,77 @@ class SyncService:
         finally:
             watchdog.cancel()
             self._current_run = None
+        if kind is not None and kind != "SaveFailed":
+            self._add_failed_run()
         self._diagnostics.event(
             "sync",
             result="ok" if kind is None else "failed",
             error_kind=kind,
             exception=exception,
             files_count=len(files),
+            updated_count=result.updated,
+            unchanged_count=result.unchanged,
+            skipped_count=len(result.skipped),
             duration_s=self._clock() - started,
         )
         return result
+
+    def _read_folder(self, files: list[dict], within_limit) -> SyncResult:
+        first: dict = {}  # header report of the first downloaded file that opens (slice 1 evidence)
+
+        def download(file_id: str) -> bytes:
+            data = self._connector.download(file_id)
+            if not first:
+                try:
+                    first.update(id=file_id, report=check_headers(data))
+                except UnreadableFile:
+                    pass
+            return data
+
+        stored = {record.id: record for record in self._repo.files()}
+        now = self._now()
+        folder = sync_folder(files, stored, download, now, check=within_limit)
+        report = first.get("report")
+        for outcome in folder.outcomes:
+            if outcome.file_id == first.get("id"):
+                self._diagnostics.file_report(outcome.index, folder.total, report)
+            if outcome.kind != "unchanged":
+                self._file_event(outcome)
+        counts = {
+            "files_read": folder.updated + folder.unchanged,
+            "updated": folder.updated,
+            "unchanged": folder.unchanged,
+            "skipped": folder.skipped,
+        }
+        run = SyncRun(now, "partial" if folder.skipped else "ok", **counts)
+        try:
+            self._repo.apply(folder.records, now, run)
+        except SaveFailed:
+            return SyncResult(
+                "failed",
+                SAVE_FAILED,
+                files_listed=len(files),
+                last_success=self._last_success,
+                **counts,
+            )
+        self._last_success = now
+        return SyncResult(
+            "ok",
+            summary(folder),
+            files_listed=len(files),
+            report=report,
+            last_success=now,
+            **counts,
+        )
+
+    def _file_event(self, outcome) -> None:
+        self._diagnostics.event("file_read", **event_fields(outcome))
+
+    def _add_failed_run(self) -> None:
+        try:
+            self._repo.add_run(SyncRun(self._now(), "failed", 0, 0, 0, ()))
+        except SaveFailed:
+            pass  # the sync already failed; its plain-word message stays
 
     def _failed(self, state: str, message: str, files: list[dict]) -> SyncResult:
         return SyncResult(

@@ -4,7 +4,8 @@ from datetime import datetime
 
 from riro.connectors.sharepoint import errors
 from riro.services.diagnostics import Diagnostics
-from riro.services.sync import UNREADABLE_FILE, SyncService, message_for
+from riro.services.sync import SyncService, message_for
+from riro.services.sync_files import UNREADABLE
 
 NOW = datetime(2026, 10, 27, 9, 0, 0)
 
@@ -13,6 +14,7 @@ class Connector:
     def __init__(self, data=b"not an xlsx", ping_failures=0):
         self.data = data
         self.ping_failures = ping_failures
+        self.etag = "e"
         self.calls = []
 
     def health_ping(self):
@@ -27,7 +29,7 @@ class Connector:
             {
                 "id": "1",
                 "name": "synthetic.xlsx",
-                "etag": "e",
+                "etag": self.etag,
                 "modified": "",
                 "size": 1,
             }
@@ -46,18 +48,20 @@ def make(connector):
     return SyncService(connector, diagnostics, now=lambda: NOW), diagnostics
 
 
-def test_us07_unreadable_file_fails_in_plain_words_and_keeps_last_success(
+def test_us09_unreadable_file_is_skipped_and_the_sync_partly_works(
     checklist_bytes,
 ):
     connector = Connector(checklist_bytes)
     service, diagnostics = make(connector)
     assert service.sync().state == "ok"
     connector.data = b"PK\x03\x04 broken synthetic bytes"
+    connector.etag = "e-changed"  # a changed file is downloaded again (US-06)
 
     result = service.sync()
 
-    assert result.state == "failed"
-    assert result.message == UNREADABLE_FILE
+    assert result.state == "ok"
+    assert result.message.startswith("Sync partly worked")
+    assert result.skipped == (("synthetic.xlsx", UNREADABLE),)
     assert result.last_success == NOW
     assert "error_kind=UnreadableFile" in diagnostics.report()
 
