@@ -39,6 +39,7 @@ NEW_KEYS = {
     "tiles",
     "ladder",
     "task_rows",
+    "role_note",  # decision B (2026-10-29): counts follow the role filter
 }
 
 

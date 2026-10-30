@@ -136,7 +136,7 @@ class Bridge:
             )
         return {"joiners": listed}
 
-    def joiner(self, joiner_id: str, as_of: str) -> dict:
+    def joiner(self, joiner_id: str, as_of: str, role: str = "") -> dict:
         day = parse_date(as_of)
         if day is None:
             return {"error": BAD_DATE}
@@ -161,7 +161,7 @@ class Bridge:
             "tasks": _task_rows(view),
         }
         if self._screens is not None:
-            result.update(self._screens.joiner_extra(view, day))
+            result.update(self._screens.joiner_extra(view, day, role=str(role or "")))
         return result
 
     def overview(self, as_of: str) -> dict:
