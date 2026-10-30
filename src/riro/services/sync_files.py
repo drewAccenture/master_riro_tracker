@@ -11,6 +11,7 @@ from datetime import datetime
 from riro.connectors.sharepoint.errors import NoAccess, NotFound
 from riro.core.checklist import UnreadableFile, read
 from riro.core.models import Checklist, FileRecord
+from riro.services.joiners import is_local
 
 # openpyxl warns about this on every current-template file. Reading is fine, so it is noise in the log.
 warnings.filterwarnings(
@@ -103,8 +104,9 @@ def sync_folder(
             records.append(replace(base, problem=reason))
         outcomes.append(FileOutcome(index, file_id, name, kind, reason, checklist))
     listed = {record.id for record in records}
+    # A local import (US-13) is never in the listing; it stays as it is until a SharePoint file replaces it.
     records += [
-        replace(old, present=False)
+        old if is_local(file_id) else replace(old, present=False)
         for file_id, old in stored.items()
         if file_id not in listed
     ]

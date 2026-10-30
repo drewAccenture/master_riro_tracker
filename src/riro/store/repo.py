@@ -77,16 +77,33 @@ class Repo:
             for record in records:
                 files[record.id] = codec.record_out(record)
             if joiners is not None:
-                stored = data.get("joiners", {})
-                section = {}
-                for joiner in joiners:
-                    out = codec.joiner_out(joiner)
-                    if joiner.id in stored:
-                        out["roll_on"] = stored[joiner.id]["roll_on"]
-                    section[joiner.id] = out
-                data["joiners"] = section
+                data["joiners"] = self._joiner_section(data, joiners)
             data["last_success"] = last_success.isoformat()
             self._commit(data, run)
+
+    def save_import(
+        self, records: Iterable[FileRecord], joiners: Iterable[Joiner]
+    ) -> None:
+        """US-13: one save for a local import. Same date rule as apply; last_success and sync_runs stay."""
+        with self._lock:
+            data = copy.deepcopy(self._data)
+            files = data.setdefault("files", {})
+            for record in records:
+                files[record.id] = codec.record_out(record)
+            data["joiners"] = self._joiner_section(data, joiners)
+            self._datafile.save(data)
+            self._data = data
+
+    @staticmethod
+    def _joiner_section(data: dict, joiners: Iterable[Joiner]) -> dict:
+        stored = data.get("joiners", {})
+        section = {}
+        for joiner in joiners:
+            out = codec.joiner_out(joiner)
+            if joiner.id in stored:
+                out["roll_on"] = stored[joiner.id]["roll_on"]
+            section[joiner.id] = out
+        return section
 
     def add_run(self, run: SyncRun) -> None:
         with self._lock:

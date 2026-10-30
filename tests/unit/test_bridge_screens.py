@@ -97,7 +97,7 @@ def test_us03_unknown_joiner_with_screens_is_not_found():
     assert bridge.joiner("no-such-id", AS_OF_TEXT) == {"found": False}
 
 
-def test_page_sees_only_the_eight_methods_with_screens():
+def test_page_sees_only_the_nine_methods_with_screens():
     _, bridge, _, _ = make()
     public = {name for name in dir(bridge) if not name.startswith("_")}
     assert public == {
@@ -109,4 +109,5 @@ def test_page_sees_only_the_eight_methods_with_screens():
         "joiner",
         "set_roll_on",
         "overview",
+        "import_files",
     }

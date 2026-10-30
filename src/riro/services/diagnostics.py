@@ -29,6 +29,7 @@ STEPS = {
     "file_read",
     "sync",
     "edge_close",
+    "local_import",  # US-13
 }
 NOTES = {POLITE_CLOSE_NOT_FINISHED}  # fixed sentences only, never free text
 RESULTS = {"ok", "failed"}
