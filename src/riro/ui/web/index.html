@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Master RIRO Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <h1>Master RIRO Tracker</h1>
+        <p>Roll-in checklist progress for every new joiner</p>
+      </div>
+      <nav id="nav" aria-label="Joiners"></nav>
+      <div id="waiting-box" hidden>
+        <div class="nav-label">Waiting for a roll-on date</div>
+        <div id="waiting"></div>
+      </div>
+      <div class="side-foot">
+        <div class="sync">
+          <span class="sync-t" id="connection">SharePoint: Not connected</span>
+          <p id="message">Not synced yet.</p>
+          <p>Last successful sync: <b id="last-success">Never</b></p>
+          <ul id="skipped"></ul>
+          <ul id="warnings"></ul>
+          <p id="data-note"></p>
+          <div class="row">
+            <button id="sync" class="btn small" type="button">Sync now</button>
+            <button id="connect" class="btn small" type="button">Connect to SharePoint</button>
+          </div>
+        </div>
+        <button id="import" class="btn small" type="button">Import checklist files</button>
+        <p id="import-result" class="import-result" hidden></p>
+        <p id="notice" class="notice" hidden></p>
+        <button id="copy" class="btn small" type="button">Copy diagnostic report</button>
+        <span id="copied" hidden>Copied</span>
+        <textarea id="report-buffer" class="report-buffer" aria-hidden="true" tabindex="-1"></textarea>
+      </div>
+    </aside>
+    <main id="main"></main>
+  </div>
+  <footer class="conf" role="contentinfo">ACCENTURE CONFIDENTIAL</footer>
+  <script src="js/dom.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/overview.js"></script>
+  <script src="js/joiner.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

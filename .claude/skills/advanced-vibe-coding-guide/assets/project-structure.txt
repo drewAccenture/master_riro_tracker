@@ -1,0 +1,31 @@
+project/
+├── CLAUDE.md                 ← lean index + rules (Claude reads every session)
+├── README.md
+├── CHANGELOG.md              ← what changed in each release
+├── docs/
+│   ├── requirements.md       ← what the system must do
+│   ├── architecture.md       ← layers, diagram, dependency rules
+│   ├── constraints.md        ← tech stack, limits, approved tools
+│   ├── workflows.md          ← user + data flows
+│   ├── glossary.md           ← business terms
+│   ├── adr/                  ← one file per architecture decision
+│   ├── plans/                ← plan-<feature>.md per feature
+│   ├── postmortems/          ← one file per incident
+│   └── runbook.md            ← how to deploy, roll back, fix incidents
+├── .claude/
+│   ├── settings.json         ← permissions + hooks (shared via git)
+│   ├── rules/                ← domain-specific rules
+│   ├── skills/               ← reusable workflows (run as /skill-name)
+│   └── agents/               ← subagents (code-reviewer, test-writer)
+├── src/
+│   ├── app/                  ← entry point, routing, wiring
+│   ├── features/             ← one folder per feature
+│   ├── core/                 ← business logic (no UI, no DB)
+│   ├── connectors/           ← all external systems
+│   └── shared/               ← small reusable helpers
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/                  ← Playwright
+├── .env.example              ← never the real .env
+└── .github/workflows/        ← CI

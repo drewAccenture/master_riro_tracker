@@ -1,0 +1,32 @@
+# Project
+[One sentence about the app.] Stack: [e.g. Next.js + TypeScript + Postgres].
+
+# Read first
+- docs/requirements.md   → what we build
+- docs/architecture.md   → layers + dependency rules
+- docs/adr/              → decisions. Do not change a decision without a new ADR.
+- docs/plans/            → current feature plan
+
+# Commands
+- Install: `npm install`
+- Dev: `npm run dev`
+- Test one file: `npm test -- <file>`
+- Test all: `npm test`
+- Lint + typecheck: `npm run lint && npm run typecheck`
+
+# Architecture rules (never break)
+- UI never talks to the database or connectors directly.
+- Business logic lives in src/core only.
+- External systems only through src/connectors.
+- No new dependency without asking me.
+
+# Workflow rules
+- Plan before editing more than 2 files.
+- Search the repo for existing code before writing new code.
+- Every change needs a test. Run tests before saying "done" and show the output.
+- Never edit a test just to make it pass. If a test is wrong, tell me.
+- Small commits with clear messages.
+- If unsure: read docs → read code → read tests → then ask me.
+
+# Gotchas
+- [Add here every time Claude makes the same mistake twice.]
