@@ -202,6 +202,10 @@ drawing and filtering only.
 10. Added in 5a: "1 day to go" in the singular (the original always wrote "N days to go"); task rows also carry
     Remarks (the 9th column); `joiner()` says `hidden` so the page can go back to the overview when the last sync
     hid the selected joiner (US-10).
+11. Decided after the visual check (2026-10-29, option B, a deliberate difference from the original HTML, where the
+    role menu only hid table rows): picking a role makes the joiner page's banner, meter, tiles and deadline ladder
+    count only that role's tasks, with a line "Counts for role X: N of M tasks." The sidebar, overview and heatmap
+    stay whole-joiner. Python counts them (`joiner(id, as_of, role)` -> `core.status.compute` on that role's tasks).
 
 Note on section 7 item 2: the Bridge's `screens` part is optional, so the existing whole-dict test in
 `test_bridge_joiners.py` did not need to change; the "screens given" case is tested in `test_bridge_screens.py`.

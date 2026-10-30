@@ -59,7 +59,7 @@ src/riro/
   __main__.py             start: logging, data folder, window, sync service
   ui/
     bridge.py             methods the page can call
-    web/                  index.html, styles.css, app.js (look of the original HTML)
+    web/                  index.html, styles.css, js/ (dom, sidebar, overview, joiner, app): look of the original HTML
   services/
     sync.py               one sync at a time, watchdog, plain-word errors
     sync_apply.py         the middle of a sync: read the folder, match joiners, one save
@@ -165,6 +165,10 @@ Why this will not fail like the first attempt: see ADR-002.
   edge_profile\   the app's own Edge profile, holds the sign-in (deleted on Disconnect, never read by our code)
   logs\           rotating log, redacted (ADR-007)
 ```
+
+Dev only: when `RIRO_DATA_DIR` is set to an absolute folder (demo mode), the app uses that folder instead, never
+reaches SharePoint (an offline connector), and the diagnostic report says "data folder: demo". It exists for the
+slice 5 visual check on synthetic data from `tools\make_demo_data.py`. A relative value is ignored.
 
 ## 9. Risks
 

@@ -20,7 +20,8 @@ DATE_NOT_SAVED = (
 )
 _XLSX = re.compile(r"\.xlsx$", re.IGNORECASE)
 _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-_REUPLOAD_WINDOW = 1  # ADR-005: the same sync or the next one
+_REUPLOAD_WINDOW = 1
+_FIRST_YEAR, _LAST_YEAR = 2000, 2099  # ADR-005: the same sync or the next one
 
 
 def normalize_owner(text: str) -> str:
@@ -28,14 +29,16 @@ def normalize_owner(text: str) -> str:
 
 
 def parse_date(text) -> date | None:
-    """yyyy-mm-dd only (what <input type="date"> sends), else None."""
+    """yyyy-mm-dd only (what <input type="date"> sends), years 2000-2099, else None."""
     cleaned = str(text or "").strip()
     if not _ISO_DATE.fullmatch(cleaned):
         return None
     try:
-        return date.fromisoformat(cleaned)
+        day = date.fromisoformat(cleaned)
     except ValueError:
         return None
+    # A date box sends a half-typed year (e.g. 0002-11-05) while she types; never a real roll-on or as-of date.
+    return day if _FIRST_YEAR <= day.year <= _LAST_YEAR else None
 
 
 def duplicate_warning(other: str, used: str) -> str:

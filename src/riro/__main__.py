@@ -10,6 +10,7 @@ import webview
 
 from riro.connectors.sharepoint.client import Limits, SharePointClient
 from riro.connectors.sharepoint.edge import make_start_edge
+from riro.connectors.sharepoint.errors import Unreachable
 from riro.services.autosync import AutoSync
 from riro.services.diagnostics import Diagnostics
 from riro.services.joiners import JoinerService
@@ -30,6 +31,34 @@ def _package_version(name: str) -> str:
         return "unknown"
 
 
+def demo_mode(environ) -> bool:
+    """Dev only: RIRO_DATA_DIR set to an absolute folder (the slice 5 visual check on synthetic data)."""
+    override = str(environ.get("RIRO_DATA_DIR", "")).strip()
+    return bool(override) and Path(override).is_absolute()
+
+
+def app_root(environ) -> Path:
+    """The app folder: LOCALAPPDATA/RIROTracker, or the RIRO_DATA_DIR folder in demo mode."""
+    if demo_mode(environ):
+        return Path(str(environ["RIRO_DATA_DIR"]).strip())
+    return Path(environ["LOCALAPPDATA"]) / "RIROTracker"
+
+
+class OfflineConnector:
+    """Demo mode never reaches SharePoint, so real joiner data never lands in a demo folder."""
+
+    def _refuse(self, *args):
+        raise Unreachable("demo mode: SharePoint is switched off")
+
+    sign_in = health_ping = list_files = download = _refuse
+
+    def close(self) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+
 def signed_in_before(profile: Path) -> bool:
     """True once Connect has run on this PC: Edge made its profile folder.
 
@@ -39,7 +68,7 @@ def signed_in_before(profile: Path) -> bool:
 
 
 def main() -> None:
-    root = Path(os.environ["LOCALAPPDATA"]) / "RIROTracker"
+    root = app_root(os.environ)
     diagnostics = Diagnostics(
         root / "logs",
         versions={
@@ -57,6 +86,11 @@ def main() -> None:
         on_version=lambda product: diagnostics.set_version("edge", product),
     )
     connector = SharePointClient(start_edge, limits=limits, on_event=diagnostics.event)
+    if demo_mode(os.environ):
+        connector = OfflineConnector()
+        diagnostics.set_version(
+            "data folder", "demo (RIRO_DATA_DIR), SharePoint switched off"
+        )
     repo = Repo(DataFile(root / "data" / "tracker.json", validate=check_layout))
     service = SyncService(connector, diagnostics, repo=repo)
     autosync = AutoSync(service)

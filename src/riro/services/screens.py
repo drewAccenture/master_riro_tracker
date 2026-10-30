@@ -16,6 +16,7 @@ from riro.core.overview import (
     meter,
     overview,
 )
+from riro.core.status import compute
 from riro.services.screen_text import (  # re-exported: tests and callers use them from here
     _CELL_CSS,
     _TILES,
@@ -139,7 +140,11 @@ class Screens:
             },
         }
 
-    def joiner_extra(self, view: JoinerView, as_of: date) -> dict:
+    def joiner_extra(self, view: JoinerView, as_of: date, role: str = "") -> dict:
+        """role (visual-check decision B): the banner, meter, tiles and ladder count only that role's tasks.
+
+        Task rows always list every task (the page hides rows); the counts come from core.status.compute.
+        """
         tasks = view.checklist.tasks if view.checklist else ()
         status, roll_on = view.status, view.joiner.roll_on
         statuses = status.tasks if status else (None,) * len(tasks)
@@ -179,9 +184,17 @@ class Screens:
             "tiles": [],
             "ladder": None,
             "task_rows": rows,
+            "role_note": "",
         }
+        selected = [i for i, task in enumerate(tasks) if not role or task.role == role]
+        if role:
+            extra["role_note"] = (
+                f"Counts for role {role}: {len(selected)} of {len(tasks)} tasks."
+            )
         if status is None:
             return extra
+        if role:
+            status = compute([tasks[i] for i in selected], roll_on, as_of)
         extra["banner"] = banner(status)
         extra["meter"] = [
             {"track": m.track, "count": m.count, "percent": m.percent}
@@ -195,11 +208,16 @@ class Screens:
             }
             for track in _TILES
         ]
-        extra["ladder"] = self._ladder(tasks, status, roll_on, as_of)
+        extra["ladder"] = self._ladder(
+            [tasks[i] for i in selected], status, roll_on, as_of, selected
+        )
         return extra
 
     @staticmethod
-    def _ladder(tasks, status: JoinerStatus, roll_on: date, as_of: date) -> dict:
+    def _ladder(
+        tasks, status: JoinerStatus, roll_on: date, as_of: date, index_of: list[int]
+    ) -> dict:
+        """index_of maps a position in `tasks` back to the task's index in the whole file."""
         data = ladder(tasks, status.tasks, roll_on, as_of)
         columns = []
         for column in data.columns:
@@ -219,7 +237,11 @@ class Screens:
                     "date": short_date(column.due) if column.due else "",
                     "title": title,
                     "squares": [
-                        {"index": index, "track": track, "css": css_name(track)}
+                        {
+                            "index": index_of[index],
+                            "track": track,
+                            "css": css_name(track),
+                        }
                         for index, track in column.squares
                     ],
                 }
