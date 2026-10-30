@@ -17,6 +17,8 @@ from urllib.parse import urlsplit
 from riro.connectors.sharepoint.session import POLITE_CLOSE_NOT_FINISHED
 from riro.connectors.sharepoint.urls import SITE_PATH, SITE_URL
 from riro.core.models import HeaderReport
+from riro.services.signin_summary import TITLE as SUMMARY_TITLE
+from riro.services.signin_summary import summary_lines
 
 STEPS = {
     "edge_start",
@@ -112,6 +114,8 @@ class Diagnostics:
         self._lines: deque[str] = deque(maxlen=KEEP_EVENTS)
         self._files: list[str] = []
         self._lock = threading.Lock()
+        self._sections: list[tuple[str, Callable[[], list[str]]]] = []
+        self._log_dir = log_dir
         self._log = None
         if log_dir is not None:
             log_dir.mkdir(parents=True, exist_ok=True)
@@ -179,11 +183,44 @@ class Diagnostics:
             for line in lines:
                 self._write(line)
 
+    def add_section(self, title: str, lines_fn: Callable[[], list[str]]) -> None:
+        """A summary from another service (US-16). lines_fn builds its lines from numbers and fixed words only."""
+        self._sections.append((title, lines_fn))
+
+    def _history(self) -> list[str]:
+        """Our own lines over several days: the log files when there is a log (they survive a restart)."""
+        if self._log_dir is None:
+            return list(self._lines)
+        lines: list[str] = []
+        for suffix in [f".{n}" for n in range(LOG_BACKUPS, 0, -1)] + [""]:
+            path = self._log_dir / f"riro.log{suffix}"
+            try:
+                lines += path.read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                continue
+        return lines
+
+    def _extra(self) -> list[str]:
+        parts: list[str] = []
+        for title, lines_fn in self._sections:
+            try:
+                lines = [str(line) for line in lines_fn()]
+            except Exception:  # noqa: BLE001 - the report must always copy; the error text could hold a name
+                lines = ["(not available)"]
+            parts += [title, *(lines or ["(none)"]), ""]
+        return parts
+
     def report(self) -> str:
+        extra = (
+            self._extra()
+        )  # outside the lock: a section may read the store, which may log
         with self._lock:
             parts = ["RIRO Tracker diagnostic report", ""]
             parts += [f"{name}: {value}" for name, value in self._versions.items()]
-            parts += ["", "Recent steps:"]
+            summary = summary_lines(self._history(), self._now().date())
+            parts += ["", SUMMARY_TITLE, *(summary or ["(none)"]), ""]
+            parts += extra
+            parts += ["Recent steps:"]
             parts += list(self._lines) or ["(none)"]
             parts += ["", "Last file checked:"]
             parts += self._files or ["(none)"]
