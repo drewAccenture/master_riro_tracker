@@ -32,6 +32,7 @@ STEPS = {
     "sync",
     "edge_close",
     "local_import",  # US-13
+    "page_load",  # slice 7b: Edge's first page, from navigate until loaded
 }
 NOTES = {POLITE_CLOSE_NOT_FINISHED}  # fixed sentences only, never free text
 RESULTS = {"ok", "failed"}

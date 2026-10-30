@@ -109,11 +109,16 @@ class SharePointClient:
         self._slot.clear(graceful=False)
         started = self._clock()
         deadline = started + self._limits.sign_in_s
-        session = self._start_edge(False, FOLDER_URL)
-        self._visible = session
+        session = None
         graceful = False
         try:
+            if self._slot.stopping:
+                raise TimedOut("the app was closed before the sign-in started")
+            # Inside the try: a start that fails is logged with its duration too (US-08 summary, slice 7b).
+            session = self._start_edge(False, FOLDER_URL)
+            self._visible = session
             on_site_before = False
+            confirm_used = False
             while True:
                 if self._slot.stopping:
                     raise TimedOut("the app was closed during sign-in")
@@ -128,7 +133,11 @@ class SharePointClient:
                 on_site_before = on_site
                 remaining = deadline - self._clock()
                 if remaining <= 0:
-                    raise TimedOut("sign-in did not finish")
+                    # A site page seen as time ran out gets its second poll: she did sign in (US-01).
+                    if not (on_site and not confirm_used):
+                        raise TimedOut("sign-in did not finish")
+                    confirm_used = True
+                    remaining = POLL_S
                 self._sleep(min(POLL_S, remaining))
         except BaseException:
             self._on_event(
@@ -137,7 +146,7 @@ class SharePointClient:
             raise
         finally:
             self._visible = None
-            if stop(session, graceful) is False:
+            if session is not None and stop(session, graceful) is False:
                 # ADR-010: the visible Edge was killed before it saved the new sign-in.
                 self._on_event(
                     "edge_close", result="failed", note=POLITE_CLOSE_NOT_FINISHED

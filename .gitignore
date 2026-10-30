@@ -6,3 +6,5 @@ __pycache__/
 .ruff_cache/
 build/
 dist/
+# made by tools\build_package.ps1 inside the package only
+src/riro/build.txt

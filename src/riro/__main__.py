@@ -26,8 +26,24 @@ from riro.store.datafile import DataFile
 from riro.store.repo import Repo, check_layout
 from riro.ui.bridge import Bridge
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.7.0"
 WEB = Path(__file__).resolve().parent / "ui" / "web" / "index.html"
+# Written by tools\build_package.ps1 into the package, never committed: "<git short commit> <yyyy-mm-dd>".
+BUILD_FILE = Path(__file__).resolve().parent / "build.txt"
+_BUILD_LINE = re.compile(r"[0-9a-f]{7,12} \d{4}-\d{2}-\d{2}")
+
+
+def read_build(path: Path) -> str:
+    """The build line for the report (US-16). "source" when run from the repo, "unknown" for anything odd."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        return "source"
+    except OSError:
+        return "unknown"
+    lines = text.splitlines()
+    first = lines[0].strip() if lines else ""
+    return first if _BUILD_LINE.fullmatch(first) else "unknown"
 
 
 def _package_version(name: str) -> str:
@@ -79,6 +95,7 @@ def main() -> None:
         root / "logs",
         versions={
             "app": APP_VERSION,
+            "build": read_build(BUILD_FILE),
             "python": platform.python_version(),
             "pywebview": _package_version("pywebview"),
         },
