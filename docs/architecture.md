@@ -70,6 +70,8 @@ src/riro/
     joiners.py            roll-on dates, waiting list, hidden and returning joiners, identity rules (ADR-005)
     local_import.py       import .xlsx files from the PC (US-13), keyed by owner; SharePoint wins
     diagnostics.py        redacted event log, "Copy diagnostic report" (ADR-007)
+    signin_summary.py     report: visible sign-ins and silent renewals per day, from our own log lines (US-08)
+    report_sections.py    report: recent syncs and data counts, numbers and fixed words only (US-16)
   core/
     checklist.py          xlsx bytes -> rows + skipped rows with reasons (openpyxl)
     deadlines.py          "10 days Before Roll On" -> -10, otherwise "deadline unclear"

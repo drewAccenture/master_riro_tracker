@@ -14,6 +14,12 @@ from riro.connectors.sharepoint.errors import Unreachable
 from riro.services.autosync import AutoSync
 from riro.services.diagnostics import Diagnostics
 from riro.services.joiners import JoinerService
+from riro.services.report_sections import (
+    DATA_TITLE,
+    SYNCS_TITLE,
+    data_lines,
+    sync_run_lines,
+)
 from riro.services.screens import Screens
 from riro.services.sync import SyncService
 from riro.store.datafile import DataFile
@@ -92,6 +98,8 @@ def main() -> None:
             "data folder", "demo (RIRO_DATA_DIR), SharePoint switched off"
         )
     repo = Repo(DataFile(root / "data" / "tracker.json", validate=check_layout))
+    diagnostics.add_section(SYNCS_TITLE, lambda: sync_run_lines(repo))
+    diagnostics.add_section(DATA_TITLE, lambda: data_lines(repo, repo.load_note))
     service = SyncService(connector, diagnostics, repo=repo)
     autosync = AutoSync(service)
     joiners = JoinerService(repo)
