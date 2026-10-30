@@ -95,6 +95,16 @@ def main() -> None:
     service = SyncService(connector, diagnostics, repo=repo)
     autosync = AutoSync(service)
     joiners = JoinerService(repo)
+    windows = []  # the window is made after the bridge; the picker only runs once it is open
+
+    def pick_files():
+        # US-13: Windows' own file dialog, .xlsx only, one or more files. None when cancelled.
+        return windows[0].create_file_dialog(
+            webview.FileDialog.OPEN,
+            allow_multiple=True,
+            file_types=("Checklist files (*.xlsx)",),
+        )
+
     bridge = Bridge(
         service,
         diagnostics,
@@ -102,6 +112,7 @@ def main() -> None:
         data_note=repo.load_note,
         joiners=joiners,
         screens=Screens(joiners),
+        pick_files=pick_files,
     )
     window = webview.create_window(
         "Master RIRO Tracker",
@@ -110,6 +121,7 @@ def main() -> None:
         width=900,
         height=640,
     )
+    windows.append(window)
 
     def on_loaded() -> None:
         diagnostics.set_version(

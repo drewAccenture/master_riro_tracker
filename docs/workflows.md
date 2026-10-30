@@ -109,10 +109,11 @@ no code reused blindly). All numbers come from Python through the bridge. Checkl
 
 User flow: clicks Import, picks one or more `.xlsx` files, then types roll-on dates for new joiners.
 
-Data flow: pywebview file dialog -> bridge `import_files(paths)` -> services read bytes from disk -> same
-`core/checklist.read` and joiner rules as US-02, source "local", keyed by normalized owner. When a SharePoint file
-with the same normalized owner appears, the SharePoint file replaces the local import and the roll-on date is kept
-(ADR-005).
+Data flow: bridge `import_files()` -> Python opens the pywebview file dialog (the page never sends a path) ->
+`SyncService.import_files` (same lock as a sync) -> `services/local_import.py` reads bytes from disk -> same
+`core/checklist.read` and joiner rules as US-02, record id `local-` + a hash of the normalized owner, one save. An
+owner already in SharePoint is skipped. When a SharePoint file with the same normalized owner appears, the next sync
+replaces the local import (kept as data, not present) and the roll-on date is kept (ADR-005).
 
 ## US-15 Install and run
 

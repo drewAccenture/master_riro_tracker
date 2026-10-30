@@ -210,6 +210,8 @@ function toolbar(data, body, redraw, actions) {
 function renderJoiner(data, actions) {
   const redraw = () => renderJoiner(data, actions);
   const parts = joinerHead(data, actions);
+  // US-13: a SharePoint file of the same owner replaces this import on the next sync.
+  if (data.imported) parts.push(el("p", { class: "note imported", text: "Imported from this PC" }));
   if (data.problem_text) parts.push(el("p", { class: "note problem", text: data.problem_text }));
   if (data.skipped_text) parts.push(el("p", { class: "note", text: data.skipped_text }));
   if (data.role_note) parts.push(el("p", { class: "note role", text: data.role_note }));

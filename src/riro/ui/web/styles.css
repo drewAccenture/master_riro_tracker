@@ -72,6 +72,8 @@ aside {
 .sync ul { padding-left: 16px; }
 .sync .ok { color: var(--ok); }
 .notice { color: var(--bad); font-size: .82rem; margin: 0; }
+.import-result { font-size: .82rem; margin: 0; white-space: pre-line; }
+.note.imported { color: var(--muted); }
 
 /* main */
 main { padding: 26px 30px 70px; min-width: 0; }

@@ -3,6 +3,7 @@
 match_joiners is pure and runs inside each sync, before the one save. Status rules stay in core/status.py.
 """
 
+import hashlib
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
@@ -22,6 +23,20 @@ _XLSX = re.compile(r"\.xlsx$", re.IGNORECASE)
 _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 _REUPLOAD_WINDOW = 1
 _FIRST_YEAR, _LAST_YEAR = 2000, 2099  # ADR-005: the same sync or the next one
+
+
+LOCAL_PREFIX = (
+    "local-"  # US-13: a file imported from the PC, keyed by normalized owner (ADR-005)
+)
+
+
+def local_id(key: str) -> str:
+    """The record id of a local import. A hash, so no name reaches an id or the diagnostics log."""
+    return LOCAL_PREFIX + hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
+
+
+def is_local(file_id: str) -> bool:
+    return str(file_id).startswith(LOCAL_PREFIX)
 
 
 def normalize_owner(text: str) -> str:
@@ -49,7 +64,8 @@ def _display_name(record: FileRecord) -> str:
     return record.checklist.owner.strip() or _XLSX.sub("", record.name)
 
 
-def _owner_key(record: FileRecord) -> str:
+def owner_key(record: FileRecord) -> str:
+    """Normalized Checklist Owner, else the normalized file name (ADR-005). Shared with the local import."""
     return normalize_owner(record.checklist.owner) or normalize_owner(
         _XLSX.sub("", record.name)
     )
@@ -72,7 +88,7 @@ def match_joiners(records: Sequence[FileRecord], joiners: Sequence[Joiner]) -> M
     usable_ids = {r.id for r in usable}
     groups: dict[str, list[FileRecord]] = {}
     for record in usable:
-        groups.setdefault(_owner_key(record), []).append(record)
+        groups.setdefault(owner_key(record), []).append(record)
 
     winners: dict[str, Joiner] = {}
     taken = {

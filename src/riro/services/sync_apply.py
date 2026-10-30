@@ -3,14 +3,34 @@
 Called by SyncService inside its lock and watchdog. Connector errors pass through to it.
 """
 
+from collections.abc import Sequence
+from dataclasses import replace
 from datetime import datetime
 
 from riro.core.checklist import UnreadableFile, check_headers
-from riro.core.models import SyncRun
-from riro.services.joiners import match_joiners
+from riro.core.models import FileRecord, SyncRun
+from riro.services.joiners import is_local, match_joiners, owner_key
 from riro.services.sync_files import event_fields, sync_folder
 from riro.services.sync_messages import SAVE_FAILED, SyncResult, summary
 from riro.store.datafile import SaveFailed
+
+
+def retire_replaced(records: Sequence[FileRecord]) -> tuple[FileRecord, ...]:
+    """US-13, ADR-005: a SharePoint file of the same owner replaces a local import (present = False, data kept)."""
+    in_sharepoint = {
+        owner_key(r)
+        for r in records
+        if r.present and r.checklist is not None and not is_local(r.id)
+    }
+    return tuple(
+        replace(r, present=False)
+        if is_local(r.id)
+        and r.present
+        and r.checklist is not None
+        and owner_key(r) in in_sharepoint
+        else r
+        for r in records
+    )
 
 
 def read_folder(
@@ -37,7 +57,8 @@ def read_folder(
         if outcome.kind != "unchanged":
             diagnostics.event("file_read", **event_fields(outcome))
 
-    match = match_joiners(folder.records, repo.joiners())
+    records = retire_replaced(folder.records)
+    match = match_joiners(records, repo.joiners())
     visible = [j for j in match.joiners if not j.hidden]
     updated_files = {o.file_id for o in folder.outcomes if o.kind == "updated"}
     joiners_updated = sum(1 for j in visible if j.file_id in updated_files)
@@ -61,7 +82,7 @@ def read_folder(
     }
     run = SyncRun(now, "partial" if folder.skipped else "ok", **run_counts)
     try:
-        repo.apply(folder.records, now, run, joiners=match.joiners)
+        repo.apply(records, now, run, joiners=match.joiners)
     except SaveFailed:
         failed = SyncResult(
             "failed",

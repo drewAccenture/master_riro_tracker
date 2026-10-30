@@ -18,6 +18,7 @@ from riro.connectors.sharepoint.errors import (
     TimedOut,
 )
 from riro.core.models import SyncRun
+from riro.services.local_import import BUSY, MAX_BYTES, ImportResult, import_paths
 from riro.services.sync_apply import read_folder
 from riro.services.sync_messages import (
     EDGE_NOT_STARTED,
@@ -131,6 +132,17 @@ class SyncService:
                 return SyncResult("failed", UNEXPECTED, last_success=self._last_success)
             self._last = self._run()
             return self._last
+        finally:
+            self._running.release()
+
+    def import_files(self, paths, max_bytes: int = MAX_BYTES) -> ImportResult:
+        """US-13. Shares the sync lock, so a sync never overwrites an import's joiners. Never waits."""
+        if not self._running.acquire(blocking=False):
+            return ImportResult("busy", BUSY)
+        try:
+            return import_paths(
+                list(paths), self._repo, self._diagnostics, self._now(), max_bytes
+            )
         finally:
             self._running.release()
 

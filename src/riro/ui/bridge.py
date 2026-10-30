@@ -1,12 +1,14 @@
 """The methods the page may call (pywebview js_api). Plain data in and out, no rules here.
 
-pywebview exposes every public attribute, so everything except the eight methods is private.
+pywebview exposes every public attribute, so everything except the nine methods is private.
 """
 
 from datetime import date, datetime
 
-from riro.services.joiners import BAD_DATE, parse_date
+from riro.services.joiners import BAD_DATE, is_local, parse_date
 from riro.services.sync import FOLDER_LABEL, MESSAGES, SyncResult
+
+IMPORT_UNAVAILABLE = "Import is not available in this window."
 
 
 def _day(value: date | None) -> str | None:
@@ -71,6 +73,7 @@ class Bridge:
         data_note=None,
         joiners=None,
         screens=None,
+        pick_files=None,
     ):
         self._sync = sync
         self._diagnostics = diagnostics
@@ -81,6 +84,8 @@ class Bridge:
         self._screens = (
             screens  # services.screens.Screens: display text for the tracker page
         )
+        # US-13: opens the window's file dialog and returns the picked paths. The page never sends a path.
+        self._pick_files = pick_files
 
     def last_result(self) -> dict:
         last = self._sync.last_result()
@@ -150,6 +155,7 @@ class Bridge:
             "name": joiner.name,
             "roll_on": _day(joiner.roll_on),
             "waiting": joiner.roll_on is None,
+            "imported": is_local(joiner.file_id),
             "problem": view.problem,
             "read_at": _when(view.read_at),
             "percent": status.percent if status else None,
@@ -175,3 +181,23 @@ class Bridge:
     def set_roll_on(self, joiner_id: str, date: str) -> dict:
         ok, message = self._joiners.set_roll_on(joiner_id, date)
         return {"ok": ok, "message": message}
+
+    def import_files(self) -> dict:
+        """US-13: pick .xlsx files on this PC and import them. Cancel changes nothing."""
+        if self._pick_files is None:
+            return {"ok": False, "cancelled": False, "message": IMPORT_UNAVAILABLE}
+        paths = self._pick_files()
+        if not paths:
+            return {"ok": True, "cancelled": True}
+        result = self._sync.import_files([str(p) for p in paths])
+        return {
+            "ok": result.state == "ok",
+            "cancelled": False,
+            "message": result.message,
+            "added": result.added,
+            "updated": result.updated,
+            "skipped": [
+                {"name": name, "reason": reason} for name, reason in result.skipped
+            ],
+            "warnings": list(result.warnings),
+        }

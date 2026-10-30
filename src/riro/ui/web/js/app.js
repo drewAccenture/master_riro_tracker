@@ -101,8 +101,11 @@ async function refreshOnce() {
 }
 
 async function run(call, button) {
+  if (state.busy) return; // an import or another click is still running
   state.busy = true;
   notice("");
+  $("import-result").hidden = true; // the last import's lines would be out of date after a sync
+  $("import").disabled = true;
   $(button).textContent = button === "sync" ? "Syncing..." : "Waiting for sign-in...";
   $("sync").disabled = true;
   $("connect").disabled = true;
@@ -112,7 +115,34 @@ async function run(call, button) {
     if (button === "connect" && result.state !== "ok" && result.state !== "not_connected") notice(result.message);
   } finally {
     state.busy = false;
+    $("import").disabled = false;
     $("connect").textContent = "Connect to SharePoint";
+    await refresh();
+  }
+}
+
+// US-13: Python opens the file dialog and reads the files; the page only shows what happened.
+async function importFiles() {
+  if (state.busy) return;
+  state.busy = true;
+  notice("");
+  $("import").disabled = true;
+  $("sync").disabled = true;
+  $("connect").disabled = true;
+  try {
+    const result = await api().import_files();
+    if (!result.cancelled) {
+      const lines = [result.message, ...(result.skipped || []).map((f) => `${f.name}: ${f.reason}`), ...(result.warnings || [])];
+      $("import-result").textContent = lines.join("\n");
+      $("import-result").hidden = false;
+      shownWaiting = "";
+      shown = { overview: "", joiner: "" };
+    }
+  } catch (e) {
+    notice("The files could not be imported. Click Copy diagnostic report and send it to the maintainer.");
+  } finally {
+    state.busy = false;
+    $("import").disabled = false;
     await refresh();
   }
 }
@@ -136,6 +166,7 @@ async function copyReport() {
 window.addEventListener("pywebviewready", () => {
   $("connect").addEventListener("click", () => run(() => api().connect(), "connect"));
   $("sync").addEventListener("click", () => run(() => api().sync_now(), "sync"));
+  $("import").addEventListener("click", importFiles);
   $("copy").addEventListener("click", copyReport);
   refresh();
   setInterval(() => {

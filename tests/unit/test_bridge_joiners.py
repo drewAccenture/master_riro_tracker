@@ -128,42 +128,46 @@ def test_us04_joiner_with_a_date_has_tiles_percent_warnings_and_tasks():
         ),
         ("6", "whenever it suits", "Not Started", None, "Deadline unclear", None, None),
     ]
-    assert result == {
-        "found": True,
-        "id": "f-a",
-        "name": "alpha Person",
-        "roll_on": "2026-11-02",
-        "waiting": False,
-        "problem": None,
-        "read_at": "29 Oct 2026 09:00",
-        "percent": 40,
-        "delayed": True,
-        "delayed_count": 1,
-        "counts": {
-            "Delayed": 1,
-            "On Track": 1,
-            "Completed": 1,
-            "Completed Late": 1,
-            "N/A": 1,
-            "Deadline unclear": 1,
-        },
-        "warnings": ["1 task has a deadline the app cannot read"],
-        "skipped_rows": 1,
-        "tasks": [
-            {
-                "number": number,
-                "role": "PMO",
-                "description": f"Invented task {number}",
-                "deadline": deadline,
-                "status": status,
-                "completion_date": done_on,
-                "track": track,
-                "due": due,
-                "days": days,
-            }
-            for number, deadline, status, done_on, track, due, days in expected_tasks
-        ],
-    }
+    assert (
+        result
+        == {
+            "found": True,
+            "id": "f-a",
+            "name": "alpha Person",
+            "roll_on": "2026-11-02",
+            "waiting": False,
+            "imported": False,  # US-13 (approved 2026-10-30): a SharePoint file, not a local import
+            "problem": None,
+            "read_at": "29 Oct 2026 09:00",
+            "percent": 40,
+            "delayed": True,
+            "delayed_count": 1,
+            "counts": {
+                "Delayed": 1,
+                "On Track": 1,
+                "Completed": 1,
+                "Completed Late": 1,
+                "N/A": 1,
+                "Deadline unclear": 1,
+            },
+            "warnings": ["1 task has a deadline the app cannot read"],
+            "skipped_rows": 1,
+            "tasks": [
+                {
+                    "number": number,
+                    "role": "PMO",
+                    "description": f"Invented task {number}",
+                    "deadline": deadline,
+                    "status": status,
+                    "completion_date": done_on,
+                    "track": track,
+                    "due": due,
+                    "days": days,
+                }
+                for number, deadline, status, done_on, track, due, days in expected_tasks
+            ],
+        }
+    )
     json.dumps(result)
 
 

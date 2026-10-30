@@ -68,6 +68,7 @@ src/riro/
     autosync.py           timer: at start, then every 5 min (US-06)
     screens.py            screen data for the page (US-11); screen_text.py holds the wording
     joiners.py            roll-on dates, waiting list, hidden and returning joiners, identity rules (ADR-005)
+    local_import.py       import .xlsx files from the PC (US-13), keyed by owner; SharePoint wins
     diagnostics.py        redacted event log, "Copy diagnostic report" (ADR-007)
   core/
     checklist.py          xlsx bytes -> rows + skipped rows with reasons (openpyxl)
