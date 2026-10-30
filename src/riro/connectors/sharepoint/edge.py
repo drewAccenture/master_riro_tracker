@@ -33,6 +33,7 @@ POLL_S = 0.2
 PROBE_S = 0.5  # one /json/version request; short, so a stop() is seen quickly
 CONNECT_S = 5.0  # websocket connect and opening our tab, after /json/version answered
 PAGE_S = 30.0  # ADR-003 request limit: first page committed and loaded
+VISIBLE_PAGE_S = 180.0  # ADR-003 visible sign-in (US-01): she may need the whole 3 minutes on that first page
 START_TOTAL_S = DEVTOOLS_START_LIMIT_S + PAGE_S  # one deadline for a whole Edge start
 READY_JS = "document.readyState"
 
@@ -142,9 +143,14 @@ def _wait_until_loaded(
     poll_s: float,
     clock: Callable[[], float],
     sleep: Callable[[float], None],
+    stop: Callable[[], bool] = lambda: False,
 ) -> None:
     deadline = clock() + timeout_s
     while (remaining := deadline - clock()) > 0:
+        if stop():
+            raise TimedOut(
+                "Edge start stopped"
+            )  # app exit: Edge is already killed, do not wait on
         try:
             if (
                 page.evaluate(READY_JS, timeout_s=min(CONNECT_S, remaining))
@@ -206,6 +212,7 @@ class EdgeStarter:
         start: Callable[..., tuple] = start_devtools,
         connect: Callable[[str, float], object] = WebSocketTransport,
         page_s: float = PAGE_S,
+        visible_page_s: float = VISIBLE_PAGE_S,
         poll_s: float = POLL_S,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
@@ -224,6 +231,7 @@ class EdgeStarter:
             clock,
             sleep,
         )
+        self._visible_page_s = visible_page_s
         self._lock = threading.Lock()
         self._aborted = False
         self._current = None
@@ -245,11 +253,41 @@ class EdgeStarter:
             raise TimedOut("Edge start stopped")
         return process
 
+    def _load(self, page, url: str, page_s: float, left) -> None:
+        """Navigate and wait until loaded. US-16: one page_load event with its duration, never the URL."""
+        started = self._clock()
+        try:
+            page.navigate(url, timeout_s=left(page_s))
+            _wait_until_loaded(
+                page,
+                left(page_s),
+                self._poll_s,
+                self._clock,
+                self._sleep,
+                stop=lambda: self._aborted,
+            )
+        except ConnectorError as error:
+            self._event(
+                "page_load",
+                result="failed",
+                error_kind=error.kind,
+                duration_s=float(self._clock() - started),
+            )
+            raise
+        self._event("page_load", result="ok", duration_s=float(self._clock() - started))
+
+    def _event(self, step: str, **fields) -> None:
+        if self._on_event:
+            self._on_event(step, **fields)
+
     def __call__(self, headless: bool, url: str) -> EdgeSession:
         with self._lock:
             self._aborted = False
             self._current = None
-        deadline = self._clock() + self._limit_s + self._page_s
+        page_s = self._page_s if headless else self._visible_page_s
+        # ADR-003: a visible start is part of the 3-minute sign-in, so its DevTools time comes out of that limit.
+        total = self._limit_s + page_s if headless else page_s
+        deadline = self._clock() + total
 
         def left(limit: float) -> float:
             remaining = deadline - self._clock()
@@ -280,10 +318,7 @@ class EdgeStarter:
                 version = cdp.call("Browser.getVersion", timeout_s=left(CONNECT_S))
                 self._on_version(str(version.get("product", "")))
             page = CdpPage.open(cdp, timeout_s=left(CONNECT_S))
-            page.navigate(url, timeout_s=left(self._page_s))
-            _wait_until_loaded(
-                page, left(self._page_s), self._poll_s, self._clock, self._sleep
-            )
+            self._load(page, url, page_s, left)
             left(CONNECT_S)  # an abort that came in during the load still counts
         except BaseException:
             session_process.kill()

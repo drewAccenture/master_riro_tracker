@@ -63,6 +63,11 @@ Write-Host '== app code'
 Copy-Item -LiteralPath (Join-Path $root 'src\riro') -Destination (Join-Path $app 'riro') -Recurse
 Get-ChildItem -LiteralPath $app -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $root 'tools\package\install.bat'), (Join-Path $root 'tools\package\uninstall.bat') -Destination $stage
+# US-16: the report shows which build she runs. riro\build.txt = "<git short commit> <yyyy-mm-dd>", package only.
+try { $commit = (& git rev-parse --short=10 HEAD) } catch { $commit = $null }
+if (-not $commit) { Write-Host 'FAIL: git rev-parse (is git installed, and is this the repo folder?)'; exit 1 }
+$commit = "$commit".Trim()
+Set-Content -LiteralPath (Join-Path $app 'riro\build.txt') -Encoding ASCII -Value "$commit $(Get-Date -Format 'yyyy-MM-dd')"
 
 Write-Host '== import check with the packaged Python'
 & (Join-Path $app 'python.exe') -c 'import riro.__main__, webview, openpyxl, websocket, clr_loader'
