@@ -1,5 +1,6 @@
-"""ADR-004 (review M2, M3, approved 2026-10-29): a data file with the wrong layout or a newer schema falls back to the
-backup, a broken file that cannot be renamed never stops the app, and the restore note reaches the page.
+"""ADR-004 (review M2, M3, approved 2026-10-29): a data file with the wrong layout falls back to the backup, a broken
+file that cannot be renamed never stops the app, and the restore note reaches the page. A newer schema opens
+read-only (ADR-013, changed 2026-11-03 with approval).
 Also the empty-ETag rule (review Low): a file without an ETag is always read again.
 """
 
@@ -10,7 +11,12 @@ from riro.core.checklist import read
 from riro.core.models import FileRecord, SyncRun
 from riro.services.sync import SyncResult
 from riro.services.sync_files import sync_folder
-from riro.store.datafile import RESTORED_FROM_BACKUP, STARTED_EMPTY, DataFile
+from riro.store.datafile import (
+    NEWER_VERSION,
+    RESTORED_FROM_BACKUP,
+    STARTED_EMPTY,
+    DataFile,
+)
 from riro.store.repo import Repo, check_layout
 from riro.ui.bridge import Bridge
 
@@ -52,13 +58,15 @@ def test_adr004_main_file_with_wrong_layout_loads_the_backup(tmp_path):
     assert repo.last_success() == T1
 
 
-def test_adr004_main_file_with_a_newer_schema_loads_the_backup(tmp_path):
+def test_adr013_main_file_with_a_newer_schema_opens_read_only_with_its_data(tmp_path):
     path = saved_twice(tmp_path)
     data = json.loads(path.read_text(encoding="utf-8"))
     path.write_text(json.dumps({**data, "schema_version": 2}), encoding="utf-8")
+    before = path.read_bytes()
     repo = Repo(DataFile(path, validate=check_layout))
-    assert repo.load_note == RESTORED_FROM_BACKUP
-    assert [r.id for r in repo.files()] == ["a"]
+    assert repo.load_note == NEWER_VERSION
+    assert [r.id for r in repo.files()] == ["a", "b"]
+    assert path.read_bytes() == before
 
 
 def test_adr004_broken_file_that_cannot_be_renamed_still_starts_empty(tmp_path):
