@@ -34,11 +34,18 @@ def _empty(version: int = SCHEMA_VERSION) -> dict:
     return {"schema_version": version}
 
 
-class _Newer:
-    """_read's answer for a file from a newer version (ADR-013): its data, or None when the layout check fails."""
+UPGRADE_NOT_SAFE = (
+    "Your data could not be upgraded safely. "
+    "Restart the PC and open the tracker again; nothing was changed."
+)
 
-    def __init__(self, data: dict | None):
-        self.data = data
+
+class _ReadOnly:
+    """_read's answer for a file this version must not write: a newer version's file (ADR-013, its data, or None
+    when the layout check fails), or an older one whose safety copy could not be written (ADR-015, no data)."""
+
+    def __init__(self, data: dict | None, note: str):
+        self.data, self.note = data, note
 
 
 class DataFile:
@@ -65,7 +72,16 @@ class DataFile:
         self._validate = validate
         self._version = schema_version
         self._upgrades = upgrades
-        self._read_only = False
+        self._read_only_note: str | None = None
+
+    @property
+    def read_only(self) -> bool:
+        return self._read_only_note is not None
+
+    @property
+    def read_only_note(self) -> str | None:
+        """Why saves are refused (NEWER_VERSION or UPGRADE_NOT_SAFE), or None when the file is writable."""
+        return self._read_only_note
 
     def _valid(self, data: dict) -> bool:
         try:
@@ -74,28 +90,46 @@ class DataFile:
             return False
         return True
 
-    def _keep_copy(self, path: Path, raw: bytes, version: int) -> None:
-        """ADR-004: the file as it was, before any upgrade step. An existing copy is never overwritten."""
+    def _keep_copy(self, path: Path, raw: bytes, version: int) -> bool:
+        """ADR-004: the file as it was, before any upgrade step. An existing copy is never overwritten.
+        False when no full copy could be written (ADR-015); a half-written one is deleted."""
         stamp = f"{self._now():%Y%m%d-%H%M%S}"
         for n in range(100):
-            name = f"{path.name}.v{version}-{stamp}" + (f"-{n}" if n else "")
+            copy_path = path.with_name(
+                f"{path.name}.v{version}-{stamp}" + (f"-{n}" if n else "")
+            )
+            opened = False
             try:
-                with open(path.with_name(name), "xb") as handle:
+                with open(copy_path, "xb") as handle:
+                    opened = True  # from here on the file is ours; before, it may be someone else's
                     handle.write(raw)
-                return
+                    handle.flush()
+                    os.fsync(
+                        handle.fileno()
+                    )  # "written in full" (ADR-015), as save() does for .tmp
+                return True
             except FileExistsError:
                 continue
             except OSError:
-                return  # the original is still on disk and becomes .bak at the next save
+                if opened:
+                    try:
+                        copy_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                return False
+        return False
 
     def _upgrade(
-        self, data: dict, version: int, keep: Callable[[], None]
-    ) -> dict | None:
+        self, data: dict, version: int, keep: Callable[[], bool]
+    ) -> "dict | _ReadOnly | None":
         upgrades = UPGRADES if self._upgrades is None else self._upgrades
         steps = [upgrades.get(n) for n in range(version, self._version)]
         if None in steps:
             return None  # no way from this layout to ours
-        keep()
+        if not keep():
+            return _ReadOnly(
+                None, UPGRADE_NOT_SAFE
+            )  # ADR-015: no upgrade without its copy
         try:
             for n, step in zip(range(version, self._version), steps, strict=True):
                 data = {**step(data), "schema_version": n + 1}
@@ -104,7 +138,8 @@ class DataFile:
         return data
 
     def _read(self, path: Path, *, keep_copy: bool = False):
-        """The data in `path` (upgraded when older), a _Newer, or None when missing, not JSON or the wrong layout."""
+        """The data in `path` (upgraded when older), a _ReadOnly, or None when missing, not JSON or the wrong layout.
+        keep_copy=False (the check before a save) upgrades in memory only and writes no copy."""
         try:
             raw = path.read_bytes()
             data = json.loads(raw.decode("utf-8"))
@@ -116,38 +151,37 @@ class DataFile:
         if type(version) is not int or version < 1:
             return None  # layouts start at 1 (ADR-004); never build a step list for a hand-edited number
         if version > self._version:
-            return _Newer(data if self._valid(data) else None)
+            return _ReadOnly(data if self._valid(data) else None, NEWER_VERSION)
         if version < self._version:
             data = self._upgrade(
                 data,
                 version,
-                lambda: keep_copy and self._keep_copy(path, raw, version),
+                lambda: not keep_copy or self._keep_copy(path, raw, version),
             )
-            if data is None:
-                return None
+            if data is None or isinstance(data, _ReadOnly):
+                return data
         return data if self._valid(data) else None
 
-    def _opened_newer(self, answer: "_Newer") -> tuple[dict, str]:
-        self._read_only = True
-        return (
-            answer.data if answer.data is not None else _empty(self._version)
-        ), NEWER_VERSION
+    def _opened_read_only(self, answer: _ReadOnly) -> tuple[dict, str]:
+        self._read_only_note = answer.note
+        data = answer.data if answer.data is not None else _empty(self._version)
+        return data, answer.note
 
     def load(self) -> tuple[dict, str | None]:
         with self._lock:
-            self._read_only = False
+            self._read_only_note = None
             data = (
                 self._read(self._path, keep_copy=True) if self._path.exists() else None
             )
-            if isinstance(data, _Newer):
-                return self._opened_newer(data)
+            if isinstance(data, _ReadOnly):
+                return self._opened_read_only(data)
             if data is not None:
                 return data, None
             backup = (
                 self._read(self._bak, keep_copy=True) if self._bak.exists() else None
             )
-            if isinstance(backup, _Newer):
-                return self._opened_newer(backup)
+            if isinstance(backup, _ReadOnly):
+                return self._opened_read_only(backup)
             if backup is not None:
                 return backup, RESTORED_FROM_BACKUP
             if not self._path.exists():
@@ -164,14 +198,13 @@ class DataFile:
     def save(self, data: dict) -> None:
         payload = {**data, "schema_version": self._version}
         with self._lock:
-            if self._read_only:
-                raise SaveFailed("the data file was saved by a newer version")
+            if self._read_only_note is not None:
+                raise SaveFailed("the data file is open read-only")
             current = self._read(self._path) if self._path.exists() else None
-            if isinstance(current, _Newer):
-                self._read_only = (
-                    True  # ADR-013: never overwrite what a newer version wrote
-                )
-                raise SaveFailed("the data file was saved by a newer version")
+            if isinstance(current, _ReadOnly):
+                # ADR-013: never overwrite what a newer version wrote
+                self._read_only_note = current.note
+                raise SaveFailed("the data file is open read-only")
             try:
                 self._path.parent.mkdir(parents=True, exist_ok=True)
                 with open(self._tmp, "w", encoding="utf-8") as handle:
@@ -195,6 +228,9 @@ class DataFile:
 
 class MemoryDataFile:
     """Same interface, kept in memory (tests, and a SyncService built without a data file)."""
+
+    read_only = False
+    read_only_note = None
 
     def __init__(self):
         self._data = _empty()

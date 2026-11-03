@@ -11,6 +11,7 @@ from datetime import date
 
 from riro.core.models import FileRecord, Joiner, JoinerView
 from riro.core.status import compute
+from riro.services.sync_messages import save_failed_message
 from riro.store.datafile import SaveFailed
 
 BAD_DATE = "Type the roll-on date as a date, for example 2026-11-02."
@@ -195,8 +196,6 @@ class JoinerService:
         except KeyError:
             return False, UNKNOWN_JOINER
         except SaveFailed:
-            return (
-                False,
-                DATE_NOT_SAVED,
-            )  # ADR-004: the old file stays; she is told, never left guessing
+            # ADR-004: the old file stays; she is told, never left guessing (ADR-013, ADR-015: and why)
+            return False, save_failed_message(self._repo, DATE_NOT_SAVED)
         return True, ""

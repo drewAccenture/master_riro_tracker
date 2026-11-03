@@ -3,6 +3,9 @@
 import threading
 
 INTERVAL_S = 300.0
+FIRST_RETRY_S = (
+    60.0  # ADR-014: after a failed sync on app start, the first auto-sync comes sooner
+)
 
 
 class AutoSync:
@@ -17,9 +20,10 @@ class AutoSync:
         # Ties a tick to the timer that made it: a stopped or replaced timer's tick does nothing.
         self._token: object | None = None
 
-    def start(self) -> None:
+    def start(self, first_delay_s: float | None = None) -> None:
+        """first_delay_s: the first tick only; later ticks use the interval."""
         with self._lock:
-            self._schedule()
+            self._schedule(first_delay_s)
 
     def stop(self) -> None:
         with self._lock:
@@ -34,10 +38,13 @@ class AutoSync:
         self._timer = None
         self._token = None
 
-    def _schedule(self) -> None:
+    def _schedule(self, delay_s: float | None = None) -> None:
         self._cancel()
         token = self._token = object()
-        self._timer = self._timer_factory(self._interval_s, lambda: self._tick(token))
+        self._timer = self._timer_factory(
+            self._interval_s if delay_s is None else delay_s,
+            lambda: self._tick(token),
+        )
         self._timer.daemon = True
         self._timer.start()
 

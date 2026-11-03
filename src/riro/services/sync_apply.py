@@ -11,7 +11,7 @@ from riro.core.checklist import UnreadableFile, check_headers
 from riro.core.models import FileRecord, SyncRun
 from riro.services.joiners import is_local, match_joiners, owner_key
 from riro.services.sync_files import event_fields, sync_folder
-from riro.services.sync_messages import SAVE_FAILED, SyncResult, summary
+from riro.services.sync_messages import SyncResult, save_failed_message, summary
 from riro.store.datafile import SaveFailed
 
 
@@ -86,7 +86,7 @@ def read_folder(
     except SaveFailed:
         failed = SyncResult(
             "failed",
-            SAVE_FAILED,
+            save_failed_message(repo),
             files_listed=len(files),
             last_success=last_success,
             **counts,

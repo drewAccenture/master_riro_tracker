@@ -20,7 +20,7 @@ from riro.services.joiners import (
     owner_key,
 )
 from riro.services.sync_files import UNREADABLE, not_a_checklist
-from riro.services.sync_messages import SAVE_FAILED
+from riro.services.sync_messages import save_failed_message
 from riro.store.datafile import SaveFailed
 
 # Re-exported: tests and callers import these from here.
@@ -158,7 +158,7 @@ def import_paths(
         **_skip_counts(skipped),
     )
     if error_kind:
-        return ImportResult("failed", SAVE_FAILED, skipped=tuple(skipped))
+        return ImportResult("failed", save_failed_message(repo), skipped=tuple(skipped))
     return ImportResult(
         "ok",
         import_summary(added, updated, len(skipped)),

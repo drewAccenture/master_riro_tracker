@@ -149,12 +149,13 @@ def test_us01_default_visible_start_waits_the_full_180_s_for_the_page():
     assert 180.0 <= run.clock.t < 185.0
 
 
-def test_adr003_default_headless_start_still_waits_only_30_s_for_the_page():
+def test_adr014_default_headless_start_waits_only_60_s_for_the_page():
+    # Was 30 s (ADR-003); ADR-014 raised it to 60 s, changed 2026-11-03 with approval.
     run = Started(FakeDevTools(Runtime_evaluate=readiness("loading")), poll_s=1.0)
     with pytest.raises(errors.TimedOut):
         run.start_edge(True, URL)
     assert run.process.kills >= 1
-    assert 30.0 <= run.clock.t < 35.0
+    assert edge.PAGE_S <= run.clock.t < edge.PAGE_S + 5.0
 
 
 # --- page_load event (US-16) -----------------------------------------------------------------------------------
