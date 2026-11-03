@@ -6,6 +6,7 @@ from datetime import datetime
 from riro.connectors.sharepoint.client import FOLDER_PATH
 from riro.connectors.sharepoint.errors import ConnectorError, EdgeNotStarted
 from riro.core.models import HeaderReport
+from riro.store.datafile import NEWER_VERSION, UPGRADE_NOT_SAFE
 
 SIGN_IN_NOT_FINISHED = (
     "The sign-in did not finish. Click Connect to SharePoint to try again."
@@ -13,6 +14,8 @@ SIGN_IN_NOT_FINISHED = (
 SYNCING = "Syncing..."
 NOT_CONNECTED = "SharePoint: Not connected"
 SAVE_FAILED = "Your data could not be saved. Close other programs that may use it and click Sync now."
+READ_ONLY = NEWER_VERSION  # ADR-013: "close other programs" would be wrong advice here
+UPGRADE_NOT_SAFE_MESSAGE = UPGRADE_NOT_SAFE  # ADR-015
 EDGE_NOT_STARTED = "Microsoft Edge could not be started. Click Sync now to try again."
 UNEXPECTED = (
     "Something went wrong. Click Copy diagnostic report and send it to the maintainer."
@@ -27,6 +30,14 @@ MESSAGES = {
     "TimedOut": "SharePoint did not answer in time. The app will try again in 5 minutes.",
     "EdgeMissing": "Microsoft Edge was not found. Install Microsoft Edge and try again.",
 }
+
+
+def save_failed_message(repo, default: str = SAVE_FAILED) -> str:
+    """The words for a SaveFailed: why the file is read-only (ADR-013, ADR-015), else `default`."""
+    return {
+        NEWER_VERSION: READ_ONLY,
+        UPGRADE_NOT_SAFE: UPGRADE_NOT_SAFE_MESSAGE,
+    }.get(repo.read_only_note, default)
 
 
 def message_for(error: ConnectorError) -> str:

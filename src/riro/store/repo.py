@@ -34,6 +34,15 @@ class Repo:
         # A sync (timer thread) and set_roll_on (page) may change the data at the same time.
         self._lock = threading.Lock()
 
+    @property
+    def read_only(self) -> bool:
+        """ADR-013, ADR-015: every save is refused. Data files without the flag count as writable."""
+        return bool(getattr(self._datafile, "read_only", False))
+
+    @property
+    def read_only_note(self) -> str | None:
+        return getattr(self._datafile, "read_only_note", None)
+
     @classmethod
     def in_memory(cls) -> "Repo":
         return cls(MemoryDataFile())

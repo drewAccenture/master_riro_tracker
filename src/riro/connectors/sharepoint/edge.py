@@ -32,7 +32,9 @@ DEVTOOLS_ATTEMPTS = 3  # ADR-009
 POLL_S = 0.2
 PROBE_S = 0.5  # one /json/version request; short, so a stop() is seen quickly
 CONNECT_S = 5.0  # websocket connect and opening our tab, after /json/version answered
-PAGE_S = 30.0  # ADR-003 request limit: first page committed and loaded
+PAGE_S = (
+    60.0  # ADR-014 (was 30 s, ADR-003): hidden Edge, first page committed and loaded
+)
 VISIBLE_PAGE_S = 180.0  # ADR-003 visible sign-in (US-01): she may need the whole 3 minutes on that first page
 START_TOTAL_S = DEVTOOLS_START_LIMIT_S + PAGE_S  # one deadline for a whole Edge start
 READY_JS = "document.readyState"

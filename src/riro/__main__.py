@@ -11,7 +11,7 @@ import webview
 from riro.connectors.sharepoint.client import Limits, SharePointClient
 from riro.connectors.sharepoint.edge import make_start_edge
 from riro.connectors.sharepoint.errors import Unreachable
-from riro.services.autosync import AutoSync
+from riro.services.autosync import FIRST_RETRY_S, AutoSync
 from riro.services.diagnostics import Diagnostics
 from riro.services.joiners import JoinerService
 from riro.services.report_sections import (
@@ -26,7 +26,7 @@ from riro.store.datafile import DataFile
 from riro.store.repo import Repo, check_layout
 from riro.ui.bridge import Bridge
 
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.9.0"
 WEB = Path(__file__).resolve().parent / "ui" / "web" / "index.html"
 # Written by tools\build_package.ps1 into the package, never committed: "<git short commit> <yyyy-mm-dd>".
 BUILD_FILE = Path(__file__).resolve().parent / "build.txt"
@@ -160,7 +160,13 @@ def main() -> None:
         # "Connected" is decided by this sync (NeedsSignIn = not connected). Before the first Connect there is
         # no profile folder, so there is nothing to try. Only the folder's existence is checked, nothing inside.
         # US-06: then every 5 minutes, unless the sign-in expired (US-08: Connect starts it again).
-        if signed_in_before(profile) and service.sync().state != "not_connected":
+        # ADR-014: a failed first sync (Edge or network not ready yet) is tried again after a minute.
+        if not signed_in_before(profile):
+            return
+        state = service.sync().state
+        if state == "failed":
+            autosync.start(first_delay_s=FIRST_RETRY_S)
+        elif state != "not_connected":
             autosync.start()
 
     window.events.loaded += on_loaded
