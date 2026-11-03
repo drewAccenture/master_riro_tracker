@@ -90,7 +90,7 @@ def test_adr007_read_build_never_echoes_what_is_in_a_bad_file(tmp_path):
 
 
 def test_us16_app_version_matches_the_slice():
-    assert app.APP_VERSION == "0.7.0"
+    assert app.APP_VERSION == "0.8.0"
 
 
 def test_us16_build_file_sits_next_to_main_in_the_riro_package():
@@ -154,8 +154,8 @@ def test_us16_report_shows_app_version_and_build_line(tmp_path, monkeypatch):
     app.main()
     [diag] = made
     lines = diag.report().splitlines()
-    assert "app: 0.7.0" in lines
+    assert "app: 0.8.0" in lines
     build = [line for line in lines if line.startswith("build: ")]
     assert len(build) == 1
-    assert lines.index(build[0]) > lines.index("app: 0.7.0")
+    assert lines.index(build[0]) > lines.index("app: 0.8.0")
     assert build[0] == "build: " + app.read_build(app.BUILD_FILE)

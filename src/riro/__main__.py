@@ -26,7 +26,7 @@ from riro.store.datafile import DataFile
 from riro.store.repo import Repo, check_layout
 from riro.ui.bridge import Bridge
 
-APP_VERSION = "0.7.0"
+APP_VERSION = "0.8.0"
 WEB = Path(__file__).resolve().parent / "ui" / "web" / "index.html"
 # Written by tools\build_package.ps1 into the package, never committed: "<git short commit> <yyyy-mm-dd>".
 BUILD_FILE = Path(__file__).resolve().parent / "build.txt"

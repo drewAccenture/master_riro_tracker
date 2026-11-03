@@ -4,11 +4,11 @@ Numbers and fixed words only: never a file name, a skip reason, a joiner name or
 """
 
 from riro.services.joiners import is_local
-from riro.store.datafile import RESTORED_FROM_BACKUP, STARTED_EMPTY
+from riro.store.datafile import NEWER_VERSION, RESTORED_FROM_BACKUP, STARTED_EMPTY
 
 SYNCS_TITLE = "Recent syncs (newest first):"
 DATA_TITLE = "Data:"
-_KNOWN_NOTES = (RESTORED_FROM_BACKUP, STARTED_EMPTY)
+_KNOWN_NOTES = (RESTORED_FROM_BACKUP, STARTED_EMPTY, NEWER_VERSION)
 _RESULTS = ("ok", "partial", "failed")
 
 
